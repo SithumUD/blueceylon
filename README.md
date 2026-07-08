@@ -9,6 +9,7 @@ Ceylon Trails connects hotels, tour agencies, and licensed tour guides with trav
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![RabbitMQ](https://img.shields.io/badge/RabbitMQ-AMQP%200--9--1-FF6600?logo=rabbitmq)](https://www.rabbitmq.com/)
+[![Keycloak](https://img.shields.io/badge/Keycloak-OIDC%2FOAuth2-4D4D4D?logo=keycloak)](https://www.keycloak.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15%2B-4169E1?logo=postgresql)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker)](https://www.docker.com/)
 [![AWS](https://img.shields.io/badge/AWS-ECS%20Fargate-232F3E?logo=amazonaws)](https://aws.amazon.com/ecs/)
@@ -46,9 +47,9 @@ Ceylon Trails connects hotels, tour agencies, and licensed tour guides with trav
 
 Ceylon Trails digitizes three tourism supply verticals — **hotels**, **tour agencies**, and **freelance tour guides** — behind one marketplace, the way Booking.com or Airbnb unify supply and demand. It's built around the same primitives used in real distributed systems teams, rather than a single-service CRUD tutorial:
 
-- **Service decomposition by business capability** (Auth / Catalog / Booking / Payment / Notification), not by technical layer.
+- **Service decomposition by business capability** (Catalog / Booking / Payment / Notification), not by technical layer.
 - **Asynchronous, event-driven communication** for anything that doesn't need to block the user-facing request.
-- **Stateless JWT authentication** that scales horizontally with no shared session store.
+- **Delegated identity via Keycloak (OIDC)** — no hand-rolled password storage or token issuance, stateless RS256 JWTs that scale horizontally with no shared session store.
 - **Database-per-service** data isolation — enforced at both the application and infrastructure level.
 - **Cloud-native deployment assumptions** from day one: ephemeral containers, no local disk state, centrally managed secrets.
 
@@ -57,34 +58,28 @@ For the full architectural reasoning, trade-offs, and interview-depth write-up b
 ## Architecture at a Glance
 
 ```text
-                               +-------------------+
-                               | NEXT.JS FRONTEND   |
-                               |  (TypeScript SSR)  |
-                               +---------+----------+
-                                         | HTTPS/REST (Axios)
-                                         v
+                     +-------------------+  OIDC Auth Code   +------------------+
+                     | NEXT.JS FRONTEND   |<----------------->|     KEYCLOAK     |
+                     |  (TypeScript SSR)  |    + PKCE          | (Realm:         |
+                     +---------+----------+                    | ceylontrails,  |
+                               | HTTPS/REST (Axios, bearer JWT) | RS256, JWKS)   |
+                               v                                +--------+-------+
 +----------------------------------------------------------------------------------+
 |                            SPRING CLOUD API GATEWAY                              |
-|                    (Route Mapping, CORS, Global JWT Validation)                  |
+|      (Route Mapping, CORS, Global JWT Validation via Keycloak JWKS)  <-----------+
 +-------+--------------------+-------------------+-----------------------+---------+
         |                    |                   |                       |
         v                    v                   v                       v
 +-------+-------+    +-------+-------+   +-------+-------+       +-------+-------+
-|  AUTH SERVICE |    | CATALOG SRV   |   | BOOKING SRV   |       | ADMIN SERVICE |
-| (JWT Issuer)  |    | (Hotels/Tours)|   | (Transactions)|       | (Moderation)  |
+| CATALOG SRV   |    | BOOKING SRV   |   | PAYMENT SRV   |       | ADMIN SERVICE |
+| (Hotels/Tours)|    | (Transactions)|   | (Escrow/Payout)|      | (Moderation)  |
 +-------+-------+    +-------+-------+   +-------+-------+       +-------+-------+
         |                    |                   |                       |
    [PostgreSQL]         [PostgreSQL]        [PostgreSQL]            [PostgreSQL]
-   auth_db              catalog_db          booking_db                (shared/admin)
+   catalog_db            booking_db          payment_db               (shared/admin)
         |                    |                   |                       |
-        |                    |                   v                       |
-        |                    |          +-------+-------+                |
-        |                    |          | PAYMENT SRV   | ---> PayHere Gateway (charge/refund)
-        |                    |          | (Escrow/Payout)|<--- PayHere Notify Webhook
-        |                    |          +-------+-------+
-        |                    |                   |
-        |                    |             [PostgreSQL]
-        |                    |             payment_db
+        |                    |                   +---> PayHere Gateway (charge/refund)
+        |                    |                   <--- PayHere Notify Webhook
         |                    v                   v                       |
         |             +-----------------------------------------+        |
         +------------>|      RABBITMQ MESSAGE BROKER            |<-------+
@@ -102,7 +97,7 @@ For the full architectural reasoning, trade-offs, and interview-depth write-up b
                                  +---------------+
 ```
 
-Every request into the cluster passes through a single choke point — the API Gateway — where JWT validation, CORS, and rate limiting live. That means a security fix or policy change is a one-service deploy, not a five-service coordinated release.
+Every request into the cluster passes through a single choke point — the API Gateway — where JWT validation (against Keycloak's public keys), CORS, and rate limiting live. That means a security fix or policy change is a one-service deploy, not a coordinated multi-service release. User identity itself never touches application code or a bespoke database — Keycloak owns the credential store, token issuance, and refresh-token lifecycle entirely.
 
 **Two communication styles, used deliberately:**
 
@@ -115,8 +110,8 @@ Every request into the cluster passes through a single choke point — the API G
 
 | Service | Responsibility | Database | Notes |
 |---|---|---|---|
-| `ceylontrails-api-gateway` | Routing, global JWT validation, CORS, rate limiting | — | Spring Cloud Gateway (WebFlux, reactive, non-blocking) |
-| `ceylontrails-auth-service` | Registration, login, JWT issuance, refresh-token rotation | `auth_db` | BCrypt hashing, enumeration-safe password reset |
+| **Keycloak** (external IdP) | Registration, login, RS256 JWT issuance, refresh-token rotation, password storage | `keycloak_db` | Not application code — a managed IAM component; realm/client config is version-controlled and imported at startup |
+| `ceylontrails-api-gateway` | Routing, global JWT validation (via Keycloak JWKS), CORS, rate limiting | — | Spring Cloud Gateway (WebFlux, reactive, non-blocking) |
 | `ceylontrails-catalog-service` | Hotels, rooms, tours, guides, search & filter | `catalog_db` | Read-heavy; multilingual descriptions (EN/SI/TA) |
 | `ceylontrails-booking-service` | Booking lifecycle, availability locking, reviews | `booking_db` | Write-heavy, transactionally critical |
 | `ceylontrails-payment-service` | PayHere integration, escrow hold, payout batching, refunds | `payment_db` | Financially critical; idempotent by design |
@@ -143,7 +138,7 @@ Multi-tenancy is handled at the business-owner level — one owner account can o
 
 ## User Roles
 
-Five roles, each with a dedicated dashboard, enforced via `@PreAuthorize` at the service layer (never trusted from the frontend):
+Five roles, sourced as **Keycloak realm/client roles** and carried as claims in the JWT, enforced via `@PreAuthorize` at the service layer (never trusted from the frontend):
 
 - **Traveler** — search, book, pay, request refunds, leave multi-dimensional reviews (cleanliness / value / location).
 - **Hotel Owner** — manages Rooms *and* Tour Packages; the one deliberate cross-capability grant in the permission model.
@@ -180,14 +175,23 @@ public void handleBookingConfirmation(BookingEventPayload payload) {
 
 ## Security
 
-- **Stateless JWT** (HS256) issued by the Auth Service; verified once at the Gateway, trusted downstream.
-- **Access/refresh split** — short-lived (~15 min) access tokens, long-lived refresh tokens rotated on use and stored hashed.
-- **Resource-ownership checks**, not just role checks — a `BUSINESS_OWNER` role alone can't express "does this user own *this* hotel."
-- **BCrypt** password hashing with tunable work factor.
-- **Enumeration-safe password reset** — identical `200 OK` regardless of whether the email exists.
-- Least-privilege **IAM Task Roles** per container, **AWS Secrets Manager** for all credentials, **WAF** at the edge, private-subnet-only compute and databases.
+Identity is split into two deliberately separate concerns — **who a human user is** (Keycloak) and **what an AWS resource is allowed to do** (AWS IAM). Nothing about one leaks into the other.
 
-See [§8 and §15 of the portfolio](./docs/ENGINEERING_PORTFOLIO.md#8-security-architecture--distributed-jwt--iam) for the HS256-vs-RS256 trade-off discussion.
+**User identity — Keycloak (OIDC/OAuth2)**
+- **Delegated identity provider** — no application code owns a password table, hashing routine, or token-signing key. Keycloak issues, rotates, and revokes tokens.
+- **RS256-signed JWTs**, verified at the Gateway against Keycloak's published JWKS (public-key rotation handled automatically — no shared secret to leak or rotate manually).
+- **Authorization Code Flow + PKCE** from the Next.js frontend; the frontend never sees or stores a password.
+- **Refresh-token rotation** and session/token revocation are handled by Keycloak's own token lifecycle, not a custom `refresh_tokens` table.
+- **Resource-ownership checks**, not just role checks — a `BUSINESS_OWNER` claim alone can't express "does this user own *this* hotel"; that check stays in each service against its own data.
+- **Realm/client configuration is version-controlled** (exported JSON) and imported at container startup, rather than clicked together by hand in the admin console.
+
+**Infrastructure identity — AWS IAM**
+- **Least-privilege IAM Task Roles** per ECS container — each service can only reach the AWS resources it actually needs (its own RDS credentials via Secrets Manager, its own S3/Cloudinary config, etc.).
+- **AWS Secrets Manager** for all credentials — DB passwords, Keycloak client secrets, PayHere/Brevo/Cloudinary keys — sourced at container startup, never baked into images.
+- **WAF** at the edge, private-subnet-only compute and databases (including the Keycloak container and its RDS-backed `keycloak_db`).
+- IAM governs *service-to-AWS-service* trust; it never sees or issues end-user tokens.
+
+See [§8 and §15 of the portfolio](./docs/ENGINEERING_PORTFOLIO.md#8-security-architecture--distributed-jwt--iam) for the full Keycloak-vs-IAM boundary and the migration notes from the original hand-rolled auth service.
 
 ## Payments & Escrow
 
@@ -213,7 +217,7 @@ INITIATED → PENDING_GATEWAY → COMPLETED → HELD → RELEASED → PAID_OUT
 | Messaging | RabbitMQ (AMQP 0-9-1), STOMP over WebSocket |
 | Database | PostgreSQL 15+ (database-per-service), Flyway migrations |
 | Frontend | Next.js 14 (React 18), TypeScript, Axios |
-| Auth | JWT (HS256), BCrypt, refresh-token rotation |
+| Auth / IAM | Keycloak (OIDC/OAuth2, RS256, PKCE) for user identity; AWS IAM for service/infra identity |
 | Media | Cloudinary CDN |
 | Email | Brevo (Sendinblue) transactional SMTP API |
 | Payments | PayHere gateway, `md5sig`-verified webhooks, escrow-style holding, monthly payout batching |
@@ -226,8 +230,8 @@ INITIATED → PENDING_GATEWAY → COMPLETED → HELD → RELEASED → PAID_OUT
 
 ```text
 ceylon-trails/
-├── ceylontrails-api-gateway/        # Spring Cloud Gateway — routing, JWT filter, CORS
-├── ceylontrails-auth-service/       # Registration, login, JWT issuance
+├── ceylontrails-api-gateway/        # Spring Cloud Gateway — routing, Keycloak JWT filter, CORS
+├── keycloak/                        # Realm export (JSON), client configs, import scripts
 ├── ceylontrails-catalog-service/    # Hotels, rooms, tours, guides, search
 ├── ceylontrails-booking-service/    # Booking lifecycle, reviews
 ├── ceylontrails-payment-service/    # PayHere, escrow, payouts, refunds
@@ -248,6 +252,7 @@ ceylon-trails/
 - Docker & Docker Compose
 - PostgreSQL 15+ (or use the bundled Docker Compose service)
 - A RabbitMQ instance (or use the bundled Docker Compose service)
+- A Keycloak instance (bundled via Docker Compose) with the `ceylontrails` realm imported from `keycloak/realm-export.json`
 - A [PayHere](https://www.payhere.lk/) sandbox account (merchant ID + secret) for payment testing
 - A [Brevo](https://www.brevo.com/) account for transactional email
 - A [Cloudinary](https://cloudinary.com/) account for media uploads
@@ -262,7 +267,7 @@ cd ceylon-trails
 ### Backend — run a single service locally
 
 ```bash
-cd ceylontrails-auth-service
+cd ceylontrails-catalog-service
 ./mvnw spring-boot:run
 ```
 
@@ -291,14 +296,14 @@ Each service reads its configuration from environment variables (see each servic
 
 ```env
 # Database
-DB_URL=jdbc:postgresql://localhost:5432/auth_db
+DB_URL=jdbc:postgresql://localhost:5432/catalog_db
 DB_USERNAME=postgres
 DB_PASSWORD=postgres
 
-# JWT
-JWT_SECRET=your-shared-hs256-secret
-JWT_ACCESS_TOKEN_EXPIRY=900000        # 15 minutes, ms
-JWT_REFRESH_TOKEN_EXPIRY=604800000    # 7 days, ms
+# Keycloak (OIDC)
+KEYCLOAK_ISSUER_URI=http://localhost:8180/realms/ceylontrails
+KEYCLOAK_CLIENT_ID=ceylontrails-gateway
+KEYCLOAK_CLIENT_SECRET=your-confidential-client-secret
 
 # RabbitMQ
 RABBITMQ_HOST=localhost
@@ -328,12 +333,12 @@ In production, all of the above are sourced from **AWS Secrets Manager** at cont
 docker compose up --build
 ```
 
-This brings up PostgreSQL, RabbitMQ, all five backend services, and the API Gateway. The frontend is run separately with `npm run dev` for hot-reload during development.
+This brings up PostgreSQL, RabbitMQ, Keycloak (with the `ceylontrails` realm auto-imported), the remaining four backend services, and the API Gateway. The frontend is run separately with `npm run dev` for hot-reload during development.
 
 | Service | Default Port |
 |---|---|
 | API Gateway | `8080` |
-| Auth Service | `8081` |
+| Keycloak | `8180` |
 | Catalog Service | `8082` |
 | Booking Service | `8083` |
 | Payment Service | `8084` |
@@ -381,7 +386,7 @@ GitHub Actions builds and pushes each service's Docker image to ECR on every pus
 ```yaml
 strategy:
   matrix:
-    service: [api-gateway, auth-service, catalog-service, booking-service, notification-service]
+    service: [api-gateway, catalog-service, booking-service, notification-service]
 ```
 
 > The pipeline currently proves the build/package/push mechanics. A test-gating stage and an automated ECS deploy step are tracked in the roadmap below.
@@ -390,7 +395,8 @@ strategy:
 
 Being upfront about what isn't solved yet:
 
-- [ ] Migrate JWT signing from **HS256 to RS256** to limit blast radius on a compromised service.
+- [x] ~~Migrate JWT signing from HS256 to RS256~~ — resolved by delegating token issuance to Keycloak (RS256 by default).
+- [ ] Automate Keycloak realm/client provisioning via Terraform instead of a manually-exported JSON import.
 - [ ] Add a **shared pub/sub backplane** (Redis or RabbitMQ's STOMP plugin) so the Notification Service can scale past one WebSocket replica.
 - [ ] Add a **test-gating stage** and automated ECS deploy job to the CI/CD pipeline.
 - [ ] Differentiate **rate-limiting tiers** between anonymous and authenticated traffic.
