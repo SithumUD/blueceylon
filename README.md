@@ -1,8 +1,8 @@
-# 🏝️ Ceylon Trails
+# 🏝️ Blue Ceylon
 
 **A distributed, event-driven tourism marketplace for Sri Lanka — built on Spring Boot microservices, RabbitMQ, and AWS.**
 
-Ceylon Trails connects hotels, tour agencies, and licensed tour guides with travelers through a single marketplace: search and booking, real-time notifications, multi-dimensional reviews, and an escrow-style payment system with monthly payouts — all running as five independently deployable services behind a single API Gateway.
+Blue Ceylon connects hotels, tour agencies, and licensed tour guides with travelers through a single marketplace: search and booking, real-time notifications, multi-dimensional reviews, and an escrow-style payment system with monthly payouts — all running as five independently deployable services behind a single API Gateway.
 
 [![Java](https://img.shields.io/badge/Java-21%20LTS-orange?logo=openjdk)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4-6DB33F?logo=spring)](https://spring.io/projects/spring-boot)
