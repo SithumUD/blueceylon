@@ -1,0 +1,62 @@
+:root {
+  /* Brand */
+  --color-navy-900: #001F3D;
+  --color-navy-800: #003366;
+  --color-navy-700: #004080;
+  --color-teal-600: #006666;
+  --color-teal-500: #008080;
+  --color-cyan-300: #5CE1E6;
+  --color-gold-500: #FDA301;
+  --color-gold-600: #E88A00;
+  --color-coral-500: #FF6B4A;
+
+  /* Neutrals */
+  --color-sand-100: #FDF6EC;
+  --color-sand-200: #F5E8D3;
+  --color-ink-900: #0E1B22;
+  --color-ink-600: #4A5A62;
+  --color-ink-300: #9AAAB0;
+  --color-line-200: #E4E9EA;
+  --color-white: #FFFFFF;
+
+  /* Semantic */
+  --color-success-500: #1F9D6C;
+  --color-error-500: #D64545;
+
+  /* Type */
+  --font-display: var(--font-fraunces), serif;
+  --font-sans: var(--font-cabinet), sans-serif;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(14, 27, 34, 0.06);
+  --shadow-md: 0 4px 12px rgba(14, 27, 34, 0.08);
+  --shadow-lg: 0 12px 32px rgba(14, 27, 34, 0.12);
+  --shadow-glow-gold: 0 0 0 3px rgba(253, 163, 1, 0.25);
+
+  /* Gradients */
+  --gradient-ocean: linear-gradient(135deg, #003366 0%, #008080 100%);
+  --gradient-sunset: linear-gradient(120deg, #FF8000 0%, #FDA301 100%);
+  --gradient-glass: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 100%);
+}
+
+[data-theme="dark"] {
+  --color-sand-100: #081419;
+  --color-sand-200: #0F252E;
+  --color-white: #15323D;
+  --color-navy-800: #2E7DB8;
+  --color-teal-600: #3FCFC0;
+  --color-teal-500: #3FCFC0;
+  --color-gold-500: #FFB84D;
+  --color-ink-900: #EAF2F4;
+  --color-ink-600: #A9BCC2;
+  --color-line-200: #20353D;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
