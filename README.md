@@ -1,426 +1,203 @@
-# 🏝️ Blue Ceylon
+# Blue Ceylon: Traveler Discovery & Booking Platform
 
-**A distributed, event-driven tourism marketplace for Sri Lanka — built on Spring Boot microservices, RabbitMQ, and AWS.**
-
-Blue Ceylon connects hotels, tour agencies, and licensed tour guides with travelers through a single marketplace: search and booking, real-time notifications, multi-dimensional reviews, and an escrow-style payment system with monthly payouts — all running as five independently deployable services behind a single API Gateway.
-
-[![Java](https://img.shields.io/badge/Java-21%20LTS-orange?logo=openjdk)](https://openjdk.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4-6DB33F?logo=spring)](https://spring.io/projects/spring-boot)
-[![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](https://www.typescriptlang.org/)
-[![RabbitMQ](https://img.shields.io/badge/RabbitMQ-AMQP%200--9--1-FF6600?logo=rabbitmq)](https://www.rabbitmq.com/)
-[![Keycloak](https://img.shields.io/badge/Keycloak-OIDC%2FOAuth2-4D4D4D?logo=keycloak)](https://www.keycloak.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15%2B-4169E1?logo=postgresql)](https://www.postgresql.org/)
-[![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker)](https://www.docker.com/)
-[![AWS](https://img.shields.io/badge/AWS-ECS%20Fargate-232F3E?logo=amazonaws)](https://aws.amazon.com/ecs/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](#license)
+Blue Ceylon is a premium traveler discovery and booking platform tailored for the Sri Lankan tourism ecosystem. The platform connects travelers with local service providers, enabling them to discover and book accommodations, short experiences, tour packages, and private tour guides.
 
 ---
 
-## Table of Contents
+## 1. Project Vision & Core Features
 
-- [Why This Exists](#why-this-exists)
-- [Architecture at a Glance](#architecture-at-a-glance)
-- [Microservices](#microservices)
-- [Domain Model](#domain-model)
-- [User Roles](#user-roles)
-- [Event-Driven Design](#event-driven-design)
-- [Security](#security)
-- [Payments & Escrow](#payments--escrow)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Configuration](#configuration)
-- [Running with Docker Compose](#running-with-docker-compose)
-- [API Documentation](#api-documentation)
-- [Testing](#testing)
-- [Deployment (AWS)](#deployment-aws)
-- [CI/CD](#cicd)
-- [Known Trade-offs & Roadmap](#known-trade-offs--roadmap)
-- [Documentation](#documentation)
-- [License](#license)
-- [Author](#author)
+Blue Ceylon is designed to offer a cohesive, trustworthy, and visually stunning experience for travelers exploring Sri Lanka.
+
+### Core Pillars
+*   **Unified Discovery**: A single platform to find and compare hotels, homestays, tour agencies, and tour guides.
+*   **Diverse Booking Models**:
+    *   **Hotels/Stays**: Nightly room bookings.
+    *   **Short Experiences**: Day Out packages (pool access + lunch), Night Out packages (gala/dinner events), and Hourly room stays (ideal for transit travelers/layovers).
+    *   **Tours**: Fixed tour packages and private tour guide hires. (Note: Booking for tour packages in the first launch is handled via direct contact/chat, whereas accommodation and short experiences are fully automated).
+*   **Verified Trust**: A trust system consisting of verification badges (backed by SLTDA license checks) and a verified-stay review system.
 
 ---
 
-## Why This Exists
+## 2. System Architecture & Authentication Pattern
 
-Ceylon Trails digitizes three tourism supply verticals — **hotels**, **tour agencies**, and **freelance tour guides** — behind one marketplace, the way Booking.com or Airbnb unify supply and demand. It's built around the same primitives used in real distributed systems teams, rather than a single-service CRUD tutorial:
+The platform uses a microservices architecture built with Spring Boot, Keycloak, PostgreSQL, RabbitMQ, and Next.js.
 
-- **Service decomposition by business capability** (Catalog / Booking / Payment / Notification), not by technical layer.
-- **Asynchronous, event-driven communication** for anything that doesn't need to block the user-facing request.
-- **Delegated identity via Keycloak (OIDC)** — no hand-rolled password storage or token issuance, stateless RS256 JWTs that scale horizontally with no shared session store.
-- **Database-per-service** data isolation — enforced at both the application and infrastructure level.
-- **Cloud-native deployment assumptions** from day one: ephemeral containers, no local disk state, centrally managed secrets.
-
-For the full architectural reasoning, trade-offs, and interview-depth write-up behind every decision below, see [`docs/ENGINEERING_PORTFOLIO.md`](./docs/ENGINEERING_PORTFOLIO.md).
-
-## Architecture at a Glance
-
-```text
-                     +-------------------+  OIDC Auth Code   +------------------+
-                     | NEXT.JS FRONTEND   |<----------------->|     KEYCLOAK     |
-                     |  (TypeScript SSR)  |    + PKCE          | (Realm:         |
-                     +---------+----------+                    | ceylontrails,  |
-                               | HTTPS/REST (Axios, bearer JWT) | RS256, JWKS)   |
-                               v                                +--------+-------+
-+----------------------------------------------------------------------------------+
-|                            SPRING CLOUD API GATEWAY                              |
-|      (Route Mapping, CORS, Global JWT Validation via Keycloak JWKS)  <-----------+
-+-------+--------------------+-------------------+-----------------------+---------+
-        |                    |                   |                       |
-        v                    v                   v                       v
-+-------+-------+    +-------+-------+   +-------+-------+       +-------+-------+
-| CATALOG SRV   |    | BOOKING SRV   |   | PAYMENT SRV   |       | ADMIN SERVICE |
-| (Hotels/Tours)|    | (Transactions)|   | (Escrow/Payout)|      | (Moderation)  |
-+-------+-------+    +-------+-------+   +-------+-------+       +-------+-------+
-        |                    |                   |                       |
-   [PostgreSQL]         [PostgreSQL]        [PostgreSQL]            [PostgreSQL]
-   catalog_db            booking_db          payment_db               (shared/admin)
-        |                    |                   |                       |
-        |                    |                   +---> PayHere Gateway (charge/refund)
-        |                    |                   <--- PayHere Notify Webhook
-        |                    v                   v                       |
-        |             +-----------------------------------------+        |
-        +------------>|      RABBITMQ MESSAGE BROKER            |<-------+
-                      |  Exchange: ceylontrails.exchange        |
-                      |  Routing keys: user.registered,         |
-                      |  booking.confirmed, payment.held,       |
-                      |  payment.released, payout.processed,    |
-                      |  refund.requested, review.posted, ...   |
-                      +------------------+----------------------+
-                                         |
-                                         v
-                                 +-------+-------+
-                                 | NOTIFICATION  | ---> Brevo SMTP (Emails)
-                                 |   SERVICE     | ---> WebSocket/STOMP (Live updates)
-                                 +---------------+
+```mermaid
+graph TD
+    User([Traveler / Provider]) -->|HTTP| Gateway[API Gateway: 8080]
+    Gateway --> Auth[Auth Service / Keycloak BFF: 8081]
+    Gateway --> Catalog[Catalog Service: 8082]
+    Gateway --> Booking[Booking Service: 8083]
+    Gateway --> Payment[Payment Service: 8085]
+    
+    Booking -->|Outbox Pattern| MQ[RabbitMQ Broker]
+    MQ --> Notification[Notification Service: 8084]
+    
+    Catalog --> DB_Cat[(Catalog DB)]
+    Booking --> DB_Book[(Booking DB)]
 ```
 
-Every request into the cluster passes through a single choke point — the API Gateway — where JWT validation (against Keycloak's public keys), CORS, and rate limiting live. That means a security fix or policy change is a one-service deploy, not a coordinated multi-service release. User identity itself never touches application code or a bespoke database — Keycloak owns the credential store, token issuance, and refresh-token lifecycle entirely.
+### Authentication Pattern: Backend-For-Frontend (BFF)
+> **IMPORTANT NOTE FOR FRONTEND DEVELOPERS & AI AGENTS**:
+> The Next.js frontend **does NOT redirect users directly to Keycloak's hosted UI**. Instead, we use a **Backend-For-Frontend (BFF)** pattern with custom branded forms in Next.js:
+>
+> 1. **Custom Forms**: Next.js renders branded `/login` and `/register` pages.
+> 2. **Auth Service Orchestration**: When a user registers or logs in, Next.js sends a REST request to `POST http://localhost:8080/api/auth/register` or `POST http://localhost:8080/api/auth/login`.
+> 3. **Keycloak Encapsulation**: The Spring Boot `auth-service` encapsulates Keycloak server-side via `KeycloakAdminClient` (for user creation/role assignment) and `KeycloakTokenExchangeClient` (for exchanging credentials for OAuth2 JWTs). It also syncs profiles to PostgreSQL and triggers welcome emails via RabbitMQ.
+> 4. **NextAuth Integration**: Next.js uses NextAuth `CredentialsProvider` to call `/api/auth/login` and store the returned Keycloak JWT in an encrypted session cookie.
+> 5. **Stateless Bearer Tokens**: All downstream services (`catalog-service`, `booking-service`) validate the Bearer JWT statelessly using Spring Security.
 
-**Two communication styles, used deliberately:**
+### Microservices Catalog
+1.  **`auth-service` / Keycloak (Port 8081)**:
+    *   Handles user registrations, logins, security tokens (JWT), and user profiles via BFF endpoints (`/api/auth/register`, `/api/auth/login`).
+    *   Manages three primary roles: `TRAVELER`, `BUSINESS_OWNER`, and `ADMIN`.
+2.  **`catalog-service` (Port 8082)**:
+    *   Manages Business Profiles (Hotels, Tour Agencies, Tour Guides).
+    *   Manages inventory types (Rooms, Day/Night Out Packages, Tour Packages).
+    *   Provides public search and filtering APIs.
+    *   Manages the Review & Rating system.
+3.  **`booking-service` (Port 8083)**:
+    *   Maintains the reservation ledger and date-based inventory locks (e.g., checking room availability and preventing double-booking).
+    *   Implements an asynchronous transactional outbox to publish booking events.
+    *   Runs a background sweeper service to auto-release pending/unpaid bookings after expiration.
+4.  **`notification-service` (Port 8084)**:
+    *   Listens to RabbitMQ messages generated by the booking service.
+    *   Sends beautifully styled HTML emails (via Brevo SMTP) to travelers and business owners for booking confirmations, cancellations, and status changes.
+5.  **`payment-service` (Port 8085)**:
+    *   Ready for PayHere gateway integration (MVP currently defaults to the **Pay at Property** flow).
 
-| Pattern | Used For | Why |
-|---|---|---|
-| **Synchronous** (HTTP/REST via Gateway) | Search, login, cart, booking confirmation response | The user is actively waiting; blocking is expected. |
-| **Asynchronous** (RabbitMQ pub/sub) | Emails, live notifications, analytics | The user should never wait on a third-party SMTP provider or similar side effect. |
+---
 
-## Microservices
+## 3. Public Search & Review APIs Reference
 
-| Service | Responsibility | Database | Notes |
-|---|---|---|---|
-| **Keycloak** (external IdP) | Registration, login, RS256 JWT issuance, refresh-token rotation, password storage | `keycloak_db` | Not application code — a managed IAM component; realm/client config is version-controlled and imported at startup |
-| `ceylontrails-api-gateway` | Routing, global JWT validation (via Keycloak JWKS), CORS, rate limiting | — | Spring Cloud Gateway (WebFlux, reactive, non-blocking) |
-| `ceylontrails-catalog-service` | Hotels, rooms, tours, guides, search & filter | `catalog_db` | Read-heavy; multilingual descriptions (EN/SI/TA) |
-| `ceylontrails-booking-service` | Booking lifecycle, availability locking, reviews | `booking_db` | Write-heavy, transactionally critical |
-| `ceylontrails-payment-service` | PayHere integration, escrow hold, payout batching, refunds | `payment_db` | Financially critical; idempotent by design |
-| `ceylontrails-notification-service` | Email (Brevo) + WebSocket/STOMP push | *stateless* | Scales on queue depth, not CPU |
+These endpoints are open to the public (`/public/**`) and form the core data source for the frontend discovery flows.
 
-Full per-service technical specs are in [§4 of the engineering portfolio](./docs/ENGINEERING_PORTFOLIO.md#4-microservices-breakdown--full-technical-specification).
+### 3.1 Search & Filtering
 
-## Domain Model
+#### Search Businesses (Card View)
+Returns a simplified summary of approved businesses to display as profile cards on listing pages.
+*   **Endpoint**: `GET /api/v1/catalog/public/search/businesses`
+*   **Query Parameters**:
+    *   `type`: `HOTEL`, `TOUR_AGENCY`, `TOUR_GUIDE` (Optional)
+    *   `city`: Enum `SriLankanCity` (Optional)
+    *   `page`, `size`: Pagination parameters
+*   **Example Response**:
+    ```json
+    {
+      "content": [
+        {
+          "id": "business-uuid-1",
+          "name": "Ella Mount Haven",
+          "tagline": "Boutique hillside stays above Ella",
+          "type": "HOTEL",
+          "city": "ELLA",
+          "coverImageUrl": "https://images.example.com/cover1.jpg",
+          "averageRating": 4.8,
+          "reviewCount": 24
+        }
+      ],
+      "totalPages": 1,
+      "totalElements": 1
+    }
+    ```
 
-Three supply verticals share one `Booking` abstraction with a common lifecycle state machine:
+#### Search Rooms
+Finds specific rooms matching location and price budgets.
+*   **Endpoint**: `GET /api/v1/catalog/public/search/rooms`
+*   **Query Parameters**: `city` (Optional), `minPrice` (Optional), `maxPrice` (Optional), `page`, `size`
 
-| Supply Type | Core Entity | Distinguishing Attributes |
-|---|---|---|
-| Hotels | `Hotel` → `Room` | Branches, room types, nightly pricing (USD/LKR), availability calendar |
-| Tour Packages | `Tour` → `Itinerary Day` | Day-by-day itineraries, GPS waypoints, tiered group pricing |
-| Tour Guides | `Guide` | SLTDA license verification, languages, vehicle type, blackout dates |
+#### Search Tours
+Finds tour packages with provider filters.
+*   **Endpoint**: `GET /api/v1/catalog/public/search/tours`
+*   **Query Parameters**: `city`, `category` (`ADVENTURE`, `WILDLIFE`, `CULTURAL`, `BEACH`), `providerType` (`TOUR_AGENCY` or `TOUR_GUIDE`), `minPrice`, `maxPrice`, `page`, `size`
 
-```text
-PENDING → CONFIRMED → CHECKED_IN → CHECKED_OUT
-              ↳ CANCELLED / REFUNDED (terminal side-branches)
-```
+---
 
-Multi-tenancy is handled at the business-owner level — one owner account can operate multiple hotel branches or agencies, so authorization checks resolve *"does this JWT's user own this specific record"*, not just *"is this user a BUSINESS_OWNER."*
+### 3.2 Review & Rating System
 
-## User Roles
+To build trust, hotel-related reviews require a verified booking ID, while guide/tour reviews require only traveler authentication.
 
-Five roles, sourced as **Keycloak realm/client roles** and carried as claims in the JWT, enforced via `@PreAuthorize` at the service layer (never trusted from the frontend):
+*   **Submit Review**: `POST /api/v1/catalog/reviews` (Requires Auth)
+    *   Request body:
+        ```json
+        {
+          "reviewerName": "John Doe",
+          "rating": 5,
+          "comment": "Incredible stay and hospitality!",
+          "entityType": "HOTEL",
+          "entityId": "hotel-uuid",
+          "stayOrTourDate": "2026-07-20",
+          "bookingId": "booking-uuid"
+        }
+        ```
+*   **Get Reviews**: `GET /api/v1/catalog/public/reviews?entityId={id}&entityType={type}` (Public)
+*   **Respond to Review**: `PUT /api/v1/catalog/reviews/{reviewId}/respond` (Requires Auth - Business Owner)
 
-- **Traveler** — search, book, pay, request refunds, leave multi-dimensional reviews (cleanliness / value / location).
-- **Hotel Owner** — manages Rooms *and* Tour Packages; the one deliberate cross-capability grant in the permission model.
-- **Tour Agency Owner** — manages Tour Packages only (no `hotel_id` to attach a room to).
-- **Tour Guide (Freelancer)** — SLTDA-verified profile, self-led Tour Packages, availability calendar.
-- **Admin / Super Admin** — approves business registrations & guide licenses, global analytics, platform broadcasts.
+---
 
-**Approval model:** a business entity and its listings can be created immediately at registration — nothing is blocked on admin approval. What's gated is *public visibility*: search APIs only surface listings whose parent entity has `status = APPROVED`. The moment a Hotel/Agency/Guide is approved, every listing already built underneath it becomes searchable — no secondary per-listing queue.
+## 4. Frontend Specifications: Next.js + TypeScript
 
-## Event-Driven Design
+The frontend is a next-generation web application built in the `frontend/` directory.
 
-```java
-// Booking Service — publish, don't wait
-rabbitTemplate.convertAndSend(
-    "ceylontrails.exchange",
-    "routing.booking.confirmed",
-    new BookingEventPayload(bookingId, travelerEmail, hotelName)
-);
-```
+### Tech Stack
+*   **Framework**: Next.js (App Router recommended for modern layouts, server actions, and optimal SEO routing).
+*   **Language**: TypeScript (for strong type safety across API payloads).
+*   **Styling**: Vanilla CSS or TailwindCSS (configured with rich aesthetics).
+*   **Authentication**: NextAuth.js (`CredentialsProvider` targeting `/api/auth/login`).
 
-```java
-// Notification Service — consume, act, never block the publisher
-@RabbitListener(queues = "booking.notifications.queue")
-public void handleBookingConfirmation(BookingEventPayload payload) {
-    emailService.sendBookingConfirmation(payload);
-    webSocketService.pushNotification(payload.getUserId(), "Booking Confirmed!");
-}
-```
+### Design Aesthetics & UI/UX Expectations
+Frontend developers must follow these principles:
+*   **Premium Visuals**: Use curated color palettes (deep ocean blues, golden sands, and lush green accents matching Sri Lanka's environment), smooth gradients, dark mode support, and glassmorphism.
+*   **Typography**: Clean sans-serif fonts (e.g., *Inter*, *Outfit*, or *Cabinet Grotesk*).
+*   **Motion**: Subtle micro-animations (e.g., card hover lift effects, smooth page transitions, fade-in skeletons during pagination fetches).
+*   **Responsive layouts**: Multi-column grids for cards that gracefully scale from mobile devices up to large desktop viewports.
 
-- **Topic exchange** (`ceylontrails.exchange`) with routing-key patterns like `booking.*` / `payment.*`.
-- **Dead-letter queue** isolates poison messages after N failed redeliveries.
-- **At-least-once delivery** (AMQP), so consumers are written to be idempotent — e.g. checking whether an email for a `bookingId` was already sent before resending.
-- One event, two delivery channels: RabbitMQ → Notification Service → both email (Brevo SMTP) and a live STOMP/WebSocket push, so the two channels can never disagree.
+---
 
-## Security
+## 5. Main Frontend Workflows to Build
 
-Identity is split into two deliberately separate concerns — **who a human user is** (Keycloak) and **what an AWS resource is allowed to do** (AWS IAM). Nothing about one leaks into the other.
+### 1. Homepage & Exploration Dashboard
+*   A hero section highlighting Sri Lanka's destinations.
+*   A universal search bar allowing quick jumps to stays or tours.
+*   Spotlights on "Verified" businesses and highly rated packages.
 
-**User identity — Keycloak (OIDC/OAuth2)**
-- **Delegated identity provider** — no application code owns a password table, hashing routine, or token-signing key. Keycloak issues, rotates, and revokes tokens.
-- **RS256-signed JWTs**, verified at the Gateway against Keycloak's published JWKS (public-key rotation handled automatically — no shared secret to leak or rotate manually).
-- **Authorization Code Flow + PKCE** from the Next.js frontend; the frontend never sees or stores a password.
-- **Refresh-token rotation** and session/token revocation are handled by Keycloak's own token lifecycle, not a custom `refresh_tokens` table.
-- **Resource-ownership checks**, not just role checks — a `BUSINESS_OWNER` claim alone can't express "does this user own *this* hotel"; that check stays in each service against its own data.
-- **Realm/client configuration is version-controlled** (exported JSON) and imported at container startup, rather than clicked together by hand in the admin console.
+### 2. Search & Filter Results Page
+*   Left-hand or top sticky filter drawer (City, price range, property type, guide languages, etc.).
+*   A clean grid of summary cards using the `/search/businesses` endpoint.
 
-**Infrastructure identity — AWS IAM**
-- **Least-privilege IAM Task Roles** per ECS container — each service can only reach the AWS resources it actually needs (its own RDS credentials via Secrets Manager, its own S3/Cloudinary config, etc.).
-- **AWS Secrets Manager** for all credentials — DB passwords, Keycloak client secrets, PayHere/Brevo/Cloudinary keys — sourced at container startup, never baked into images.
-- **WAF** at the edge, private-subnet-only compute and databases (including the Keycloak container and its RDS-backed `keycloak_db`).
-- IAM governs *service-to-AWS-service* trust; it never sees or issues end-user tokens.
+### 3. Detailed Business/Guide Profiles
+*   **Hotels**: Gallery layout, amenities, interactive map, list of rooms, short-experience options (Day Out/Night Out passes), and reviews listing.
+*   **Guides**: Tour Guide bio, SLTDA license details, languages, daily/half-day rates, and calendar showing blackout dates.
 
-See [§8 and §15 of the portfolio](./docs/ENGINEERING_PORTFOLIO.md#8-security-architecture--distributed-jwt--iam) for the full Keycloak-vs-IAM boundary and the migration notes from the original hand-rolled auth service.
+### 4. Booking Checkout Flow
+*   Interactive date-range selectors checking room/package availability.
+*   Form collecting traveler details, mapping to the "Pay at Property" option.
+*   Redirect to Next.js custom `/login` page if the traveler tries to complete a checkout while unauthenticated.
 
-## Payments & Escrow
+---
 
-Ceylon Trails charges travelers synchronously through **PayHere** at checkout but never releases that money to a Hotel/Agency/Guide until the booked date has passed:
+## 6. How to Run the Environment
 
-```text
-INITIATED → PENDING_GATEWAY → COMPLETED → HELD → RELEASED → PAID_OUT
-                                    ↳ ON_HOLD_DISPUTE → REFUNDED / HELD
-```
-
-- **Escrow hold:** funds are held until the check-out date (rooms) or last itinerary day (tours).
-- **Monthly payout batch:** a scheduled job sweeps `RELEASED` payments per owner into a settlement ledger — a two-step *compute-then-disburse* process so a disbursement bug can never corrupt the payable ledger.
-- **Webhook authenticity:** PayHere's server-to-server notify callback is verified by recomputing its `md5sig`; a mismatched signature is discarded regardless of claimed status.
-- **Refunds are admin-mediated**, never auto-approved, since the platform is refunding money held on behalf of a third party.
-- **Honest limitation:** this is an internal ledger, not a licensed escrow/trust account — see [§24.6](./docs/ENGINEERING_PORTFOLIO.md#246-honest-limitations-of-this-model) for what a production fintech implementation would additionally require.
-
-## Tech Stack
-
-| Layer | Technologies |
-|---|---|
-| Language/Runtime | Java 21 (LTS), TypeScript |
-| Backend | Spring Boot 4, Spring Cloud Gateway, Spring Security 6, Spring Data JPA/Hibernate |
-| Messaging | RabbitMQ (AMQP 0-9-1), STOMP over WebSocket |
-| Database | PostgreSQL 15+ (database-per-service), Flyway migrations |
-| Frontend | Next.js 14 (React 18), TypeScript, Axios |
-| Auth / IAM | Keycloak (OIDC/OAuth2, RS256, PKCE) for user identity; AWS IAM for service/infra identity |
-| Media | Cloudinary CDN |
-| Email | Brevo (Sendinblue) transactional SMTP API |
-| Payments | PayHere gateway, `md5sig`-verified webhooks, escrow-style holding, monthly payout batching |
-| Containerization | Docker |
-| Cloud | AWS: ECS Fargate, ALB, RDS PostgreSQL, Amazon MQ, Secrets Manager, IAM, VPC, WAF |
-| CI/CD | GitHub Actions (matrix builds, Docker build/push to ECR) |
-| API Docs | OpenAPI 3.0 / Swagger UI |
-
-## Project Structure
-
-```text
-ceylon-trails/
-├── ceylontrails-api-gateway/        # Spring Cloud Gateway — routing, Keycloak JWT filter, CORS
-├── keycloak/                        # Realm export (JSON), client configs, import scripts
-├── ceylontrails-catalog-service/    # Hotels, rooms, tours, guides, search
-├── ceylontrails-booking-service/    # Booking lifecycle, reviews
-├── ceylontrails-payment-service/    # PayHere, escrow, payouts, refunds
-├── ceylontrails-notification-service/ # Email + WebSocket/STOMP push
-├── ceylontrails-frontend/           # Next.js 14 + TypeScript
-├── docs/
-│   └── ENGINEERING_PORTFOLIO.md     # Full architectural deep-dive (this repo's design doc)
-├── docker-compose.yml
-└── .github/workflows/               # CI/CD pipelines
-```
-
-## Getting Started
-
-### Prerequisites
-
-- Java 21 (LTS)
-- Node.js 18+ and npm/yarn
-- Docker & Docker Compose
-- PostgreSQL 15+ (or use the bundled Docker Compose service)
-- A RabbitMQ instance (or use the bundled Docker Compose service)
-- A Keycloak instance (bundled via Docker Compose) with the `ceylontrails` realm imported from `keycloak/realm-export.json`
-- A [PayHere](https://www.payhere.lk/) sandbox account (merchant ID + secret) for payment testing
-- A [Brevo](https://www.brevo.com/) account for transactional email
-- A [Cloudinary](https://cloudinary.com/) account for media uploads
-
-### Clone
-
+### Infrastructure
+Start the required databases, message broker, and IAM service using Docker:
 ```bash
-git clone https://github.com/<your-username>/ceylon-trails.git
-cd ceylon-trails
+docker-compose up -d
+```
+*   **PostgreSQL**: `localhost:5433`
+*   **RabbitMQ Management Console**: `localhost:15672`
+*   **Keycloak Admin**: `localhost:8081`
+
+### Running Backend Services
+Navigate to each service folder in `services/` and run:
+```bash
+mvn spring-boot:run
 ```
 
-### Backend — run a single service locally
-
+### Initializing Frontend
+Once the frontend is bootstrapped:
 ```bash
-cd ceylontrails-catalog-service
-./mvnw spring-boot:run
-```
-
-Repeat per service, or use Docker Compose to bring up the whole stack (see below).
-
-### Frontend
-
-```bash
-cd ceylontrails-frontend
+cd frontend
 npm install
 npm run dev
 ```
-
-Runs the Next.js dev server at `http://localhost:3000`. Create a `.env.local` with at least:
-
-```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
-NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
-```
-
-`NEXT_PUBLIC_*` variables are the only ones exposed to the browser bundle — anything the API layer needs server-side only (e.g. for SSR data fetching) should be a plain, unprefixed env var instead.
-
-## Configuration
-
-Each service reads its configuration from environment variables (see each service's `application.yml` for the full list). At minimum you'll need:
-
-```env
-# Database
-DB_URL=jdbc:postgresql://localhost:5432/catalog_db
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-
-# Keycloak (OIDC)
-KEYCLOAK_ISSUER_URI=http://localhost:8180/realms/ceylontrails
-KEYCLOAK_CLIENT_ID=ceylontrails-gateway
-KEYCLOAK_CLIENT_SECRET=your-confidential-client-secret
-
-# RabbitMQ
-RABBITMQ_HOST=localhost
-RABBITMQ_PORT=5672
-RABBITMQ_USERNAME=guest
-RABBITMQ_PASSWORD=guest
-
-# PayHere
-PAYHERE_MERCHANT_ID=your-merchant-id
-PAYHERE_MERCHANT_SECRET=your-merchant-secret
-PAYHERE_MODE=sandbox                  # sandbox | live
-
-# Brevo
-BREVO_API_KEY=your-brevo-api-key
-
-# Cloudinary
-CLOUDINARY_CLOUD_NAME=your-cloud-name
-CLOUDINARY_API_KEY=your-api-key
-CLOUDINARY_API_SECRET=your-api-secret
-```
-
-In production, all of the above are sourced from **AWS Secrets Manager** at container startup rather than baked into images — see [§15](./docs/ENGINEERING_PORTFOLIO.md#15-cloud-security--iam-hardening).
-
-## Running with Docker Compose
-
-```bash
-docker compose up --build
-```
-
-This brings up PostgreSQL, RabbitMQ, Keycloak (with the `ceylontrails` realm auto-imported), the remaining four backend services, and the API Gateway. The frontend is run separately with `npm run dev` for hot-reload during development.
-
-| Service | Default Port |
-|---|---|
-| API Gateway | `8080` |
-| Keycloak | `8180` |
-| Catalog Service | `8082` |
-| Booking Service | `8083` |
-| Payment Service | `8084` |
-| Notification Service | `8085` |
-| RabbitMQ Management UI | `15672` |
-| Frontend (dev) | `3000` |
-
-## API Documentation
-
-Each service exposes OpenAPI 3.0 docs via Swagger UI at `/swagger-ui.html`, aggregated through the API Gateway at:
-
-```
-http://localhost:8080/swagger-ui.html
-```
-
-Health checks are exposed at `/actuator/health` on every service (Spring Boot Actuator), used by the ECS scheduler and ALB target groups in production.
-
-## Testing
-
-| Level | What It Verifies |
-|---|---|
-| Unit | Business logic in isolation — e.g. booking state machine transitions, password matching |
-| Integration | A service against a real, containerized database (Testcontainers) — Flyway migrations, soft-delete filters |
-| Contract | The event payload shape one service produces matches what a consumer expects |
-| End-to-end | A full user journey through the Gateway across multiple services |
-
-```bash
-# Run a single service's tests
-./mvnw test
-
-# Run the frontend test suite
-cd ceylontrails-frontend && npm test
-```
-
-Message-driven flows are tested against an embedded/Testcontainers RabbitMQ instance rather than a live broker.
-
-## Deployment (AWS)
-
-Production deployment targets **ECS Fargate** behind an **Application Load Balancer**, with managed **RDS PostgreSQL** (one instance/schema per service) and **Amazon MQ** for RabbitMQ. See [§14–§15 of the portfolio](./docs/ENGINEERING_PORTFOLIO.md#14-cloud-infrastructure--deployment-architecture) for the full topology, IAM hardening, and network segmentation.
-
-## CI/CD
-
-GitHub Actions builds and pushes each service's Docker image to ECR on every push to `main`, using a build matrix so all five services build in parallel and are tagged independently by commit SHA:
-
-```yaml
-strategy:
-  matrix:
-    service: [api-gateway, catalog-service, booking-service, notification-service]
-```
-
-> The pipeline currently proves the build/package/push mechanics. A test-gating stage and an automated ECS deploy step are tracked in the roadmap below.
-
-## Known Trade-offs & Roadmap
-
-Being upfront about what isn't solved yet:
-
-- [x] ~~Migrate JWT signing from HS256 to RS256~~ — resolved by delegating token issuance to Keycloak (RS256 by default).
-- [ ] Automate Keycloak realm/client provisioning via Terraform instead of a manually-exported JSON import.
-- [ ] Add a **shared pub/sub backplane** (Redis or RabbitMQ's STOMP plugin) so the Notification Service can scale past one WebSocket replica.
-- [ ] Add a **test-gating stage** and automated ECS deploy job to the CI/CD pipeline.
-- [ ] Differentiate **rate-limiting tiers** between anonymous and authenticated traffic.
-- [ ] Extract **analytics** into its own service consuming the existing event bus.
-- [ ] Automate **payout disbursement** (currently a computed ledger, not a bank transfer).
-- [ ] Add a **processor-agnostic payment interface** so a second gateway can back up PayHere.
-- [ ] Model **partial refunds** (currently all-or-nothing per payment).
-- [ ] Extend the marketplace to additional supply verticals (Restaurants, Adventure/Activity operators) — additive by design, since `Booking` and moderation are already modeled around a generic "operator" concept.
-
-## Documentation
-
-The full interview-depth engineering write-up — every architectural decision, trade-off, failure mode, and the reasoning behind it — lives in [`docs/ENGINEERING_PORTFOLIO.md`](./docs/ENGINEERING_PORTFOLIO.md), including:
-
-- Complete microservice specifications
-- Fund lifecycle & escrow state machine
-- Resilience and failure-mode table
-- Skills-to-role mapping and interview talking points
-- Full glossary of protocols and terms used throughout the system
-
-## License
-
-This project is licensed under the [MIT License](./LICENSE).
-
-## Author
-
-**Sithum Udayanga**
-Full-Stack Cloud Engineer / Backend Microservices Engineer / Platform Engineer
+The frontend should be accessible at `http://localhost:3000`.

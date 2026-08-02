@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 600px; margin: 40px auto; background: #fff; padding: 20px; border-radius: 8px; border-top: 5px solid #0056b3; }
+        .header { font-size: 24px; color: #0056b3; font-weight: bold; margin-bottom: 20px; }
+        .footer { margin-top: 30px; font-size: 12px; color: #777; text-align: center; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">Welcome to Blue Ceylon!</div>
+    <p>Hi <span th:text="${userName}">User</span>,</p>
+    <p>Thank you for creating an account with Blue Ceylon! We are thrilled to have you onboard.</p>
+    <p>You can now log in to the platform and start exploring the beautiful catalog of experiences, or set up your own business profile to offer services to travelers.</p>
+    <p>Cheers,<br/>The Blue Ceylon Team</p>
+    <div class="footer">© 2026 Blue Ceylon. All rights reserved.</div>
+</div>
+</body>
+</html>

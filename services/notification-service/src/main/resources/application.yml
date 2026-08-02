@@ -1,0 +1,27 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: notification-service
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+  mail:
+    host: smtp-relay.brevo.com
+    port: 587
+    username: 9d2f57001@smtp-brevo.com
+    password: xsmtpsib-8c6c5c19facd68c9f06c237cfcef0c847e7ad1102a2261dad6ad95820ea382a0-MpB3dVhDLOEnZxLY
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+blueceylon:
+  mail:
+    from: ceycodez@gmail.com
+

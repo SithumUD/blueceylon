@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 600px; margin: 40px auto; background: #fff; padding: 20px; border-radius: 8px; border-top: 5px solid #ff9900; }
+        .header { font-size: 24px; color: #ff9900; font-weight: bold; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">Profile Submission Received</div>
+    <p>Hi Admin,</p>
+    <p>A new Business Profile has been submitted for approval:</p>
+    <ul>
+        <li><strong>Business Name:</strong> <span th:text="${businessName}">Name</span></li>
+        <li><strong>Owner ID:</strong> <span th:text="${ownerId}">ID</span></li>
+    </ul>
+    <p>Please log in to the admin dashboard to review the submission.</p>
+</div>
+</body>
+</html>

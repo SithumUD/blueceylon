@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 600px; margin: 40px auto; background: #fff; padding: 20px; border-radius: 8px; border-top: 5px solid #dc3545; }
+        .header { font-size: 24px; color: #dc3545; font-weight: bold; margin-bottom: 20px; }
+        .reason { background: #f8d7da; padding: 15px; border-radius: 4px; color: #721c24; margin: 15px 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">Action Required: Profile Rejected</div>
+    <p>Hi,</p>
+    <p>We have reviewed your business profile for <strong><span th:text="${businessName}">Name</span></strong>, but unfortunately, we cannot approve it in its current state.</p>
+    <p><strong>Reason for rejection:</strong></p>
+    <div class="reason">
+        <span th:text="${rejectionReason}">Reason goes here</span>
+    </div>
+    <p>Please log in to your dashboard to make the necessary corrections and submit your profile again.</p>
+    <p>Regards,<br/>The Blue Ceylon Team</p>
+</div>
+</body>
+</html>

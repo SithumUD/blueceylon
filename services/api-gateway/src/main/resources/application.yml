@@ -1,0 +1,48 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: blueceylon-api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+      routes:
+        - id: auth-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/auth/**, /api/account/**
+        - id: catalog-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/v1/catalog/**
+        - id: booking-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/v1/booking/**
+        - id: payment-service
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/v1/payment/**
+        - id: notification-service
+          uri: http://localhost:8085
+          predicates:
+            - Path=/api/v1/notification/**
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/blueceylon
+          jwk-set-uri: http://localhost:8180/realms/blueceylon/protocol/openid-connect/certs
+

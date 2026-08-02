@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 600px; margin: 40px auto; background: #fff; padding: 20px; border-radius: 8px; border-top: 5px solid #28a745; }
+        .header { font-size: 24px; color: #28a745; font-weight: bold; margin-bottom: 20px; }
+        .details { background: #e9ecef; padding: 15px; border-radius: 4px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">Booking Confirmed!</div>
+    <p>Hi,</p>
+    <p>Your booking has been successfully confirmed. Here are the details:</p>
+    <div class="details">
+        <p><strong>Booking ID:</strong> <span th:text="${bookingId}">ID</span></p>
+        <p><strong>Item Type:</strong> <span th:text="${itemType}">Type</span></p>
+        <p><strong>Total Amount:</strong> LKR <span th:text="${amount}">0.00</span></p>
+    </div>
+    <p>We look forward to hosting you!</p>
+    <p>Regards,<br/>The Blue Ceylon Team</p>
+</div>
+</body>
+</html>

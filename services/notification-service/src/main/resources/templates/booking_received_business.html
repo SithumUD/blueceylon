@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 600px; margin: 40px auto; background: #fff; padding: 20px; border-radius: 8px; border-top: 5px solid #007bff; }
+        .header { font-size: 24px; color: #007bff; font-weight: bold; margin-bottom: 20px; }
+        .details { background: #e9ecef; padding: 15px; border-radius: 4px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">New Booking Received</div>
+    <p>Hi,</p>
+    <p>You have received a new booking. Please prepare for the guest's arrival:</p>
+    <div class="details">
+        <p><strong>Booking ID:</strong> <span th:text="${bookingId}">ID</span></p>
+        <p><strong>Item Type:</strong> <span th:text="${itemType}">Type</span></p>
+        <p><strong>Quantity:</strong> <span th:text="${quantity}">0</span></p>
+    </div>
+    <p>Log in to your dashboard to view the full details of this booking.</p>
+    <p>Regards,<br/>The Blue Ceylon Team</p>
+</div>
+</body>
+</html>
