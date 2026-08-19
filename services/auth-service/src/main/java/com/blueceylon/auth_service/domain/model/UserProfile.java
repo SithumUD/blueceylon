@@ -45,6 +45,22 @@ public class UserProfile extends BaseModel {
     @Column(name = "business_type")
     private String businessType; // e.g. "HOTEL" or "TOUR_AGENCY"
 
+    @Column(name = "is_email_verified", nullable = false)
+    private boolean emailVerified = false;
+
+    @Column(name = "verification_token")
+    private String verificationToken;
+
+    @Column(name = "verification_token_expires_at")
+    private LocalDateTime verificationTokenExpiresAt;
+
+    public boolean isEmailVerified() { return emailVerified; }
+    public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
+    public String getVerificationToken() { return verificationToken; }
+    public void setVerificationToken(String verificationToken) { this.verificationToken = verificationToken; }
+    public LocalDateTime getVerificationTokenExpiresAt() { return verificationTokenExpiresAt; }
+    public void setVerificationTokenExpiresAt(LocalDateTime verificationTokenExpiresAt) { this.verificationTokenExpiresAt = verificationTokenExpiresAt; }
+
     public String getKeycloakSub() { return keycloakSub; }
     public void setKeycloakSub(String keycloakSub) { this.keycloakSub = keycloakSub; }
     public String getEmail() { return email; }

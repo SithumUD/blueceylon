@@ -34,5 +34,6 @@ public enum SriLankanCity {
     TANGALLE,
     BATTICALOA,
     RATNAPURA,
-    KITULGALA
+    KITULGALA,
+    MATARA
 }

@@ -31,7 +31,7 @@ public class AdminUserService {
 
     @Transactional(readOnly = true)
     public List<UserProfileDto> getAllUsers(String search, UserRole role) {
-        String query = (search != null && !search.isBlank()) ? search.trim() : null;
+        String query = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
         List<UserProfile> profiles = userProfileRepository.searchUsers(query, role);
         return profiles.stream().map(UserProfileDto::new).collect(Collectors.toList());
     }

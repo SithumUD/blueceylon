@@ -1,6 +1,15 @@
 package com.blueceylon.catalog_service.domain.model.enums;
 
 public enum TourCategory {
+    CULTURAL,
+    ADVENTURE,
+    WILDLIFE,
+    BEACH,
+    SPIRITUAL,
+    WELLNESS,
+    HISTORICAL,
+    ECO,
+    CULINARY,
     CULTURAL_HERITAGE,   // Sigiriya, Anuradhapura, Polonnaruwa, temples
     WILDLIFE_SAFARI,     // Yala, Udawalawe, Wilpattu
     BEACH_AND_COASTAL,   // Mirissa, Bentota, Arugam Bay

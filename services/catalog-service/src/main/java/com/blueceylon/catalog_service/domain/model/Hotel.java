@@ -49,6 +49,11 @@ public class Hotel extends Business {
     @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Room> rooms = new ArrayList<>();
 
+    @Column(name = "sltda_license_number")
+    private String sltdaLicenseNumber;
+
+    public String getSltdaLicenseNumber() { return sltdaLicenseNumber; }
+    public void setSltdaLicenseNumber(String sltdaLicenseNumber) { this.sltdaLicenseNumber = sltdaLicenseNumber; }
     public Integer getStarRating() { return starRating; }
     public void setStarRating(Integer starRating) { this.starRating = starRating; }
     public Integer getTotalBranches() { return totalBranches; }

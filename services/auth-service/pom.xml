@@ -73,6 +73,10 @@
                  just the cleanest non-blocking HTTP client for one outbound call. RestTemplate works
                  too if you'd rather not pull in WebFlux for one client. -->
         </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
 	</dependencies>
 
 	<build>

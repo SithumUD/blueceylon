@@ -13,6 +13,8 @@ spring:
     url: jdbc:postgresql://localhost:5433/catalog_db
     username: catalog_user
     password: catalog_pass
+  flyway:
+    baseline-on-migrate: true
   jpa:
     hibernate:
       ddl-auto: update
@@ -26,4 +28,10 @@ spring:
         jwt:
           issuer-uri: http://localhost:8180/realms/blueceylon
           jwk-set-uri: http://localhost:8180/realms/blueceylon/protocol/openid-connect/certs
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:dg0eycgai}
+  api-key: ${CLOUDINARY_API_KEY:434546544944823}
+  api-secret: ${CLOUDINARY_API_SECRET:khPfaI9CkHMN8TanseHjcJwe11Q}
+
 

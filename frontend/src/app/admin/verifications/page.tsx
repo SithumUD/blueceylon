@@ -1,16 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BadgeCheck, CheckCircle2, XCircle, ArrowRight, Eye, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getPendingVerifications, approveBusiness, rejectBusiness } from "@/lib/api/catalog";
 
-// MOCK DATA matching backend AdminBusinessController response
+// MOCK DATA matching backend AdminBusinessController response (as safety fallback)
 const mockPendingVerifications = [
   {
     id: "bus_1",
     name: "Ocean Breeze Resort",
-    businessType: "HOTEL",
-    sltdaRegistrationNumber: "SLTDA/H/2026/012",
+    type: "HOTEL",
+    licenseNumber: "SLTDA/H/2026/012",
     contactEmail: "admin@oceanbreeze.lk",
     contactPhone: "+94 77 123 4567",
     status: "PENDING",
@@ -19,8 +20,8 @@ const mockPendingVerifications = [
   {
     id: "bus_2",
     name: "Lanka Wildlife Treks",
-    businessType: "TOUR_AGENCY",
-    sltdaRegistrationNumber: "SLTDA/TA/2026/044",
+    type: "TOUR_AGENCY",
+    licenseNumber: "SLTDA/TA/2026/044",
     contactEmail: "hello@lankawildlife.lk",
     contactPhone: "+94 71 987 6543",
     status: "PENDING",
@@ -29,8 +30,8 @@ const mockPendingVerifications = [
   {
     id: "bus_3",
     name: "Nimal Fernando",
-    businessType: "TOUR_GUIDE",
-    sltdaRegistrationNumber: "N-1052",
+    type: "TOUR_GUIDE",
+    licenseNumber: "N-1052",
     contactEmail: "nimal.guide@gmail.com",
     contactPhone: "+94 70 555 1234",
     status: "PENDING",
@@ -40,6 +41,64 @@ const mockPendingVerifications = [
 
 export default function VerificationsPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [verifications, setVerifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const res = await getPendingVerifications();
+      setVerifications(res);
+    } catch {
+      setVerifications(mockPendingVerifications);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleApprove = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to approve "${name}"?`)) return;
+    try {
+      await approveBusiness(id);
+      loadData();
+    } catch {
+      // Fallback
+      setVerifications((prev) => prev.filter((x) => x.id !== id));
+    }
+  };
+
+  const handleReject = async (id: string, name: string) => {
+    const reason = window.prompt(`Enter reason to reject "${name}":`);
+    if (reason === null) return;
+    if (!reason.trim()) {
+      alert("Rejection reason is required.");
+      return;
+    }
+    try {
+      await rejectBusiness(id, reason);
+      loadData();
+    } catch {
+      // Fallback
+      setVerifications((prev) => prev.filter((x) => x.id !== id));
+    }
+  };
+
+  const filteredVerifications = verifications.filter((b) => {
+    const term = searchTerm.toLowerCase();
+    return b.name.toLowerCase().includes(term) || b.licenseNumber.toLowerCase().includes(term);
+  });
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto p-8 text-center text-sm text-[#4A5A62] dark:text-[#A9BCC2]">
+        Loading pending verifications...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 w-full">
@@ -49,7 +108,7 @@ export default function VerificationsPage() {
             Pending Verifications
           </h1>
           <p className="text-sm text-[#4A5A62] dark:text-[#A9BCC2] mt-1">
-            Review and approve provider registrations. (Maps to <code className="text-xs bg-gray-200 dark:bg-gray-800 px-1 rounded">GET /api/v1/catalog/admin/business/pending</code>)
+            Review and approve provider registrations.
           </p>
         </div>
       </div>
@@ -81,18 +140,18 @@ export default function VerificationsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E4E9EA] dark:divide-[#20353D]">
-              {mockPendingVerifications.map((business) => (
+              {filteredVerifications.map((business) => (
                 <tr key={business.id} className="hover:bg-gray-50 dark:hover:bg-[#15323D]/50 transition-colors">
                   <td className="px-6 py-4 font-bold text-[#0E1B22] dark:text-[#EAF2F4]">
                     {business.name}
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-gray-100 dark:bg-gray-800 text-[#4A5A62] dark:text-[#A9BCC2]">
-                      {business.businessType}
+                      {business.type}
                     </span>
                   </td>
                   <td className="px-6 py-4 font-mono text-xs text-[#0E1B22] dark:text-[#EAF2F4]">
-                    {business.sltdaRegistrationNumber}
+                    {business.licenseNumber}
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-xs text-[#0E1B22] dark:text-[#EAF2F4] font-semibold">{business.contactEmail}</div>
@@ -102,13 +161,10 @@ export default function VerificationsPage() {
                     {new Date(business.submittedAt).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-right space-x-2">
-                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-[#008080] hover:bg-[#008080]/10 rounded-lg" title="View Details">
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-[#1F9D6C] hover:bg-[#1F9D6C]/10 rounded-lg" title="Approve">
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-[#1F9D6C] hover:bg-[#1F9D6C]/10 rounded-lg" title="Approve" onClick={() => handleApprove(business.id, business.name)}>
                       <CheckCircle2 className="w-4 h-4" />
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-[#D64545] hover:bg-[#D64545]/10 rounded-lg" title="Reject">
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-[#D64545] hover:bg-[#D64545]/10 rounded-lg" title="Reject" onClick={() => handleReject(business.id, business.name)}>
                       <XCircle className="w-4 h-4" />
                     </Button>
                   </td>

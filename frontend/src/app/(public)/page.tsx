@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { MOCK_BUSINESSES } from "@/lib/mock-data/businesses";
+import { MOCK_BUSINESSES, CITY_LABELS, REGION_LABELS } from "@/lib/mock-data/businesses";
 
 export default function ExploreLandingPage() {
   const router = useRouter();
@@ -220,9 +220,9 @@ export default function ExploreLandingPage() {
       ...tp,
       hotelName: b.name,
       hotelId: b.id,
-      city: b.location.city,
-      rating: b.rating,
-      sltdaVerified: b.sltdaVerified,
+      city: b.city,
+      rating: b.averageRating,
+      sltdaVerified: b.verificationStatus === "VERIFIED",
     }))
   ).slice(0, 3);
 
@@ -652,16 +652,16 @@ export default function ExploreLandingPage() {
                   {/* Image container */}
                   <div className="relative h-56 overflow-hidden">
                     <img
-                      src={hotel.coverImage}
+                      src={hotel.coverImageUrl}
                       alt={hotel.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-4 left-4 z-10 flex gap-2">
-                      {hotel.sltdaVerified && <Badge variant="sltda" />}
+                      {hotel.verificationStatus === "VERIFIED" && <Badge variant="sltda" />}
                     </div>
                     <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold flex items-center gap-1">
                       <Star className="w-3.5 h-3.5 text-[#FDA301] fill-[#FDA301]" />
-                      <span>{hotel.rating}</span>
+                      <span>{hotel.averageRating}</span>
                       <span className="text-gray-300 font-normal">({hotel.reviewCount})</span>
                     </div>
                   </div>
@@ -670,7 +670,7 @@ export default function ExploreLandingPage() {
                   <div className="p-6 space-y-3">
                     <div className="flex items-center gap-1.5 text-xs text-[#008080] dark:text-[#3FCFC0] font-semibold">
                       <MapPin className="w-3.5 h-3.5" />
-                      <span>{hotel.location.city}, {hotel.location.region}</span>
+                      <span>{CITY_LABELS[hotel.city] ?? hotel.city}, {REGION_LABELS[hotel.region] ?? hotel.region}</span>
                     </div>
                     <h3 className="font-display text-xl font-bold text-[#0E1B22] dark:text-[#EAF2F4] group-hover:text-[#008080] transition-colors">
                       {hotel.name}
@@ -688,7 +688,7 @@ export default function ExploreLandingPage() {
                     <span className="text-xl font-extrabold text-[#003366] dark:text-[#3FCFC0]">${hotel.priceStartFrom}</span>
                     <span className="text-xs text-gray-500"> / night</span>
                   </div>
-                  <Link href={`/rooms?city=${encodeURIComponent(hotel.location.city)}`}>
+                  <Link href={`/rooms?city=${encodeURIComponent(hotel.city)}`}>
                     <Button variant="primary" size="sm" className="rounded-xl font-bold gap-1">
                       <span>View Details</span>
                       <Eye className="w-3.5 h-3.5" />
@@ -748,19 +748,19 @@ export default function ExploreLandingPage() {
                 {/* Image */}
                 <div className="relative h-56 overflow-hidden">
                   <img
-                    src={tour.image}
+                    src={tour.imageUrls[0]}
                     alt={tour.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute top-4 left-4 z-10">
                     <span className="px-3 py-1 rounded-full bg-[#001F3D]/80 backdrop-blur-md text-white text-[11px] font-bold uppercase tracking-wider flex items-center gap-1">
                       <Clock className="w-3 h-3 text-[#5CE1E6]" />
-                      {tour.duration}
+                      {tour.durationLabel}
                     </span>
                   </div>
                   <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-[#5CE1E6]" />
-                    <span>{tour.city}</span>
+                    <span>{CITY_LABELS[tour.city] ?? tour.city}</span>
                   </div>
                 </div>
 
@@ -776,11 +776,11 @@ export default function ExploreLandingPage() {
                     {tour.description}
                   </p>
 
-                  {/* Highlights pills */}
+                  {/* Highlights/Inclusions pills */}
                   <div className="flex flex-wrap gap-1.5 pt-2">
-                    {tour.highlights.slice(0, 2).map((h, i) => (
-                      <span key={i} className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-[#15323D] text-[#4A5A62] dark:text-[#A9BCC2]">
-                        {h}
+                    {tour.inclusions.slice(0, 2).map((inc) => (
+                      <span key={inc.id} className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-[#15323D] text-[#4A5A62] dark:text-[#A9BCC2]">
+                        {inc.name}
                       </span>
                     ))}
                   </div>
@@ -792,7 +792,7 @@ export default function ExploreLandingPage() {
                 <div>
                   <span className="text-[10px] uppercase font-bold text-[#4A5A62] dark:text-[#A9BCC2] block">Package Price</span>
                   <span className="text-xl font-extrabold text-[#008080] dark:text-[#3FCFC0]">${tour.price}</span>
-                  <span className="text-xs text-gray-500"> / person</span>
+                  <span className="text-xs text-gray-500"> {tour.currency} / person</span>
                 </div>
                 <Link href="/tours">
                   <Button variant="secondary" size="sm" className="rounded-xl font-bold gap-1">

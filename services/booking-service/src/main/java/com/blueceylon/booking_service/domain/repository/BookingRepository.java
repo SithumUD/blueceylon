@@ -16,8 +16,10 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
 
     List<Booking> findByBusinessId(String businessId);
 
+    List<Booking> findByStatusAndHoldExpiresAtBefore(com.blueceylon.booking_service.domain.model.enums.BookingStatus status, java.time.Instant now);
+
     @Query("SELECT b FROM Booking b WHERE b.itemType = :itemType AND b.itemId = :itemId AND " +
-           "(b.checkInDate < :checkOutDate AND b.checkOutDate > :checkInDate) AND b.status IN ('PENDING', 'CONFIRMED')")
+           "(b.checkInDate < :checkOutDate AND b.checkOutDate > :checkInDate) AND b.status IN ('PENDING', 'CONFIRMED', 'HELD')")
     List<Booking> findOverlappingBookings(
             @Param("itemType") ItemType itemType,
             @Param("itemId") String itemId,

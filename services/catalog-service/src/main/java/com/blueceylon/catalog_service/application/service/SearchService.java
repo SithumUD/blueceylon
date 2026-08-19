@@ -12,6 +12,7 @@ import com.blueceylon.catalog_service.presentation.dto.response.TourPackageRespo
 import com.blueceylon.catalog_service.presentation.mapper.BusinessMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import com.blueceylon.catalog_service.infrastructure.persistence.repository.TourGuideProfileRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.BeanUtils;
@@ -21,18 +22,34 @@ import org.springframework.beans.BeanUtils;
 public class SearchService {
 
     private final BusinessRepository businessRepository;
+    private final TourGuideProfileRepository guideRepository;
     private final RoomRepository roomRepository;
     private final TourPackageRepository tourPackageRepository;
     private final BusinessMapper businessMapper;
 
-    public SearchService(BusinessRepository businessRepository, RoomRepository roomRepository, TourPackageRepository tourPackageRepository, BusinessMapper businessMapper) {
+    public SearchService(BusinessRepository businessRepository, TourGuideProfileRepository guideRepository, RoomRepository roomRepository, TourPackageRepository tourPackageRepository, BusinessMapper businessMapper) {
         this.businessRepository = businessRepository;
+        this.guideRepository = guideRepository;
         this.roomRepository = roomRepository;
         this.tourPackageRepository = tourPackageRepository;
         this.businessMapper = businessMapper;
     }
 
     public Page<BusinessSummaryResponse> searchBusinesses(BusinessType type, SriLankanCity city, Pageable pageable) {
+        if (type == BusinessType.TOUR_GUIDE) {
+            return guideRepository.searchGuides(city, pageable).map(g -> {
+                BusinessSummaryResponse r = new BusinessSummaryResponse();
+                r.setId(g.getId());
+                r.setName(g.getName());
+                r.setTagline(g.getTagline());
+                r.setType(BusinessType.TOUR_GUIDE);
+                r.setCity(g.getCity());
+                r.setCoverImageUrl(g.getCoverImageUrl());
+                r.setAverageRating(g.getAverageRating() != null ? g.getAverageRating() : 5.0);
+                r.setReviewCount(g.getReviewCount() != null ? g.getReviewCount() : 0);
+                return r;
+            });
+        }
         return businessRepository.searchBusinesses(type, city, pageable).map(b -> {
             BusinessSummaryResponse r = new BusinessSummaryResponse();
             r.setId(b.getId());

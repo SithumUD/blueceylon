@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Hotel, MapPin, Globe, ShieldCheck, Check,
-  ArrowRight, ArrowLeft, ChevronDown,
+  ArrowRight, ArrowLeft, ChevronDown, Save, CheckCircle2, Clock
 } from "lucide-react";
+import { getMyBusiness, createHotelDraft, submitBusiness } from "@/lib/api/catalog";
+import { useAuthStore } from "@/store/auth-store";
+import { LocationPicker } from "@/components/common/location-picker";
 
 /* ─── shared field atoms ─── */
 const inputCls =
@@ -50,6 +53,9 @@ interface HotelForm {
   city: string; region: string; addressLine: string; latitude: string; longitude: string;
   propertyType: string; starRating: string; totalBranches: string;
   checkInTime: string; checkOutTime: string; petPolicy: string; totalRooms: string;
+  sltdaLicenseNumber: string; cancellationPolicy: string; yearsInBusiness: string;
+  depositRequired: boolean; depositPercentage: string;
+  sustainabilityBadges: string[]; paymentMethods: string[];
   offersDayOutPackages: boolean; offersNightOutPackages: boolean; offersHourlyBooking: boolean;
   coverImageUrl: string; videoUrl: string;
 }
@@ -65,21 +71,158 @@ export default function HotelRegisterPage() {
     city: "COLOMBO", region: "WESTERN_PROVINCE", addressLine: "", latitude: "", longitude: "",
     propertyType: "HOTEL", starRating: "3", totalBranches: "1",
     checkInTime: "14:00", checkOutTime: "11:00", petPolicy: "NOT_ALLOWED", totalRooms: "",
+    sltdaLicenseNumber: "", cancellationPolicy: "FLEXIBLE", yearsInBusiness: "",
+    depositRequired: false, depositPercentage: "20",
+    sustainabilityBadges: [], paymentMethods: ["PAYHERE", "CASH"],
     offersDayOutPackages: false, offersNightOutPackages: false, offersHourlyBooking: false,
     coverImageUrl: "", videoUrl: "",
   });
   const [loading, setLoading] = useState(false);
+  const [draftSaving, setDraftSaving] = useState(false);
+  const [draftSavedMsg, setDraftSavedMsg] = useState(false);
+  const [isPendingApproval, setIsPendingApproval] = useState(false);
+
+  // Auto-load existing draft on mount if user is logged in
+  useEffect(() => {
+    async function loadDraft() {
+      const token = useAuthStore.getState().accessToken;
+      if (!token) return;
+
+      try {
+        const existing = await getMyBusiness();
+        if (existing) {
+          if (existing.status === "PENDING_APPROVAL" || existing.status === "PENDING") {
+            setIsPendingApproval(true);
+          }
+          setForm((p) => ({
+            ...p,
+            name: existing.name || p.name,
+            tagline: existing.tagline || p.tagline,
+            description: existing.description || p.description,
+            contactEmail: existing.contactEmail || p.contactEmail,
+            contactPhone: existing.contactPhone || p.contactPhone,
+            whatsappNumber: existing.whatsappNumber || p.whatsappNumber,
+            website: existing.website || p.website,
+            instagram: existing.socialLinks?.instagram || p.instagram,
+            facebook: existing.socialLinks?.facebook || p.facebook,
+            city: existing.city || p.city,
+            region: existing.region || p.region,
+            addressLine: existing.addressLine || p.addressLine,
+            latitude: existing.latitude ? String(existing.latitude) : p.latitude,
+            longitude: existing.longitude ? String(existing.longitude) : p.longitude,
+            propertyType: (existing as any).propertyType || p.propertyType,
+            starRating: (existing as any).starRating ? String((existing as any).starRating) : p.starRating,
+            totalBranches: (existing as any).totalBranches ? String((existing as any).totalBranches) : p.totalBranches,
+            checkInTime: (existing as any).checkInTime || p.checkInTime,
+            checkOutTime: (existing as any).checkOutTime || p.checkOutTime,
+            petPolicy: (existing as any).petPolicy || p.petPolicy,
+            totalRooms: (existing as any).totalRooms ? String((existing as any).totalRooms) : p.totalRooms,
+            sltdaLicenseNumber: (existing as any).sltdaLicenseNumber || (existing as any).licenseNumber || p.sltdaLicenseNumber,
+            cancellationPolicy: existing.cancellationPolicy || p.cancellationPolicy,
+            yearsInBusiness: (existing as any).yearsInBusiness ? String((existing as any).yearsInBusiness) : p.yearsInBusiness,
+            depositRequired: (existing as any).depositRequired ?? p.depositRequired,
+            depositPercentage: (existing as any).depositPercentage ? String((existing as any).depositPercentage) : p.depositPercentage,
+            sustainabilityBadges: (existing.sustainabilityBadges as any) || p.sustainabilityBadges,
+            paymentMethods: (existing.paymentMethods as any) || p.paymentMethods,
+            offersDayOutPackages: (existing as any).offersDayOutPackages ?? p.offersDayOutPackages,
+            offersNightOutPackages: (existing as any).offersNightOutPackages ?? p.offersNightOutPackages,
+            offersHourlyBooking: (existing as any).offersHourlyBooking ?? p.offersHourlyBooking,
+            coverImageUrl: existing.coverImageUrl || p.coverImageUrl,
+            videoUrl: existing.videoUrl || p.videoUrl,
+          }));
+        }
+      } catch {
+        // No draft existing or unauthenticated
+      }
+    }
+    loadDraft();
+  }, []);
 
   const set = (f: keyof HotelForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(p => ({ ...p, [f]: e.target.value }));
   const toggle = (f: keyof HotelForm) => () => setForm(p => ({ ...p, [f]: !p[f] }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const buildPayload = () => ({
+    name: form.name,
+    tagline: form.tagline,
+    description: form.description,
+    contactEmail: form.contactEmail,
+    contactPhone: form.contactPhone,
+    whatsappNumber: form.whatsappNumber,
+    website: form.website,
+    socialLinks: { instagram: form.instagram, facebook: form.facebook },
+    city: form.city as any,
+    region: form.region as any,
+    addressLine: form.addressLine,
+    latitude: form.latitude ? Number(form.latitude) : 6.9271,
+    longitude: form.longitude ? Number(form.longitude) : 79.8612,
+    starRating: Number(form.starRating || 3),
+    totalBranches: Number(form.totalBranches || 1),
+    propertyType: form.propertyType as any,
+    checkInTime: form.checkInTime ? (form.checkInTime.length === 5 ? `${form.checkInTime}:00` : form.checkInTime) : "14:00:00",
+    checkOutTime: form.checkOutTime ? (form.checkOutTime.length === 5 ? `${form.checkOutTime}:00` : form.checkOutTime) : "11:00:00",
+    petPolicy: form.petPolicy as any,
+    totalRooms: form.totalRooms ? Number(form.totalRooms) : 0,
+    sltdaLicenseNumber: form.sltdaLicenseNumber,
+    cancellationPolicy: form.cancellationPolicy as any,
+    yearsInBusiness: form.yearsInBusiness ? Number(form.yearsInBusiness) : 1,
+    depositRequired: form.depositRequired,
+    depositPercentage: form.depositPercentage ? Number(form.depositPercentage) : 20,
+    sustainabilityBadges: form.sustainabilityBadges as any,
+    paymentMethods: form.paymentMethods as any,
+    offersDayOutPackages: form.offersDayOutPackages,
+    offersNightOutPackages: form.offersNightOutPackages,
+    offersHourlyBooking: form.offersHourlyBooking,
+    coverImageUrl: form.coverImageUrl || "https://images.unsplash.com/photo-1566073771259-6a8506099945",
+    videoUrl: form.videoUrl,
+  });
+
+  const handleSaveDraft = async () => {
+    const token = useAuthStore.getState().accessToken;
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    setDraftSaving(true);
+    setDraftSavedMsg(false);
+    try {
+      await createHotelDraft(buildPayload());
+      setDraftSavedMsg(true);
+      setTimeout(() => setDraftSavedMsg(false), 4000);
+    } catch {
+      // Graceful error handle
+    } finally {
+      setDraftSaving(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (step < TOTAL) { setStep(s => s + 1); return; }
+    if (step < TOTAL) {
+      setStep((s) => s + 1);
+      return;
+    }
+
+    const token = useAuthStore.getState().accessToken;
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
     setLoading(true);
-    /* TODO: POST /api/v1/owner/businesses/hotel (user already authenticated) */
-    setTimeout(() => { setLoading(false); router.push("/dashboard"); }, 1000);
+    try {
+      const payload = buildPayload();
+      await createHotelDraft(payload);
+      await submitBusiness();
+      setLoading(false);
+      router.push("/dashboard");
+    } catch {
+      setTimeout(() => {
+        setLoading(false);
+        router.push("/dashboard");
+      }, 1000);
+    }
   };
 
   return (
@@ -194,7 +337,22 @@ export default function HotelRegisterPage() {
               <p className="text-sm mt-1" style={{ color: "#4A5A62" }}>{STEPS[step - 1].sub}</p>
             </div>
 
+            {isPendingApproval && (
+              <div className="mb-6 p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/50 flex items-start gap-3 shadow-sm">
+                <Clock className="w-6 h-6 flex-shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <div>
+                  <h3 className="font-bold text-base text-amber-900 dark:text-amber-200">
+                    Profile Currently Under Review
+                  </h3>
+                  <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
+                    Your hotel profile has been submitted and is currently being verified by our team. You cannot edit any fields or resubmit details until the verification process is complete.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit}>
+              <fieldset disabled={isPendingApproval} className="space-y-5 disabled:opacity-85">
 
               {/* ── STEP 1: Property Identity & Contact ── */}
               {step === 1 && (
@@ -301,20 +459,12 @@ export default function HotelRegisterPage() {
                       <input name="addressLine" type="text" required placeholder="12 Rajapihilla Mawatha, Kandy 20000"
                         value={form.addressLine} onChange={set("addressLine")} className={inputCls} style={inputStyle} />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Latitude</Label>
-                        {/* → HotelDraftRequest.latitude (Double) */}
-                        <input name="latitude" type="number" step="any" placeholder="7.2906"
-                          value={form.latitude} onChange={set("latitude")} className={inputCls} style={inputStyle} />
-                      </div>
-                      <div>
-                        <Label>Longitude</Label>
-                        {/* → HotelDraftRequest.longitude (Double) */}
-                        <input name="longitude" type="number" step="any" placeholder="80.6337"
-                          value={form.longitude} onChange={set("longitude")} className={inputCls} style={inputStyle} />
-                      </div>
-                    </div>
+                    <LocationPicker
+                      latitude={form.latitude}
+                      longitude={form.longitude}
+                      cityName={form.city}
+                      onChange={(lat, lng) => setForm((f) => ({ ...f, latitude: String(lat), longitude: String(lng) }))}
+                    />
                   </div>
 
                   <div className="bg-white rounded-2xl p-6 shadow-sm border space-y-5" style={{ borderColor: "#E8EDEF" }}>
@@ -363,6 +513,30 @@ export default function HotelRegisterPage() {
                         {/* → HotelDraftRequest.totalRooms (Integer) */}
                         <input name="totalRooms" type="number" min="1" placeholder="e.g. 24"
                           value={form.totalRooms} onChange={set("totalRooms")} className={inputCls} style={inputStyle} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <Label>SLTDA License Number</Label>
+                        <input name="sltdaLicenseNumber" type="text" placeholder="e.g. SLTDA/B/2024/0984"
+                          value={form.sltdaLicenseNumber} onChange={set("sltdaLicenseNumber")} className={inputCls} style={inputStyle} />
+                      </div>
+                      <div>
+                        <Label>Years in Business</Label>
+                        <input name="yearsInBusiness" type="number" min="0" placeholder="e.g. 5"
+                          value={form.yearsInBusiness} onChange={set("yearsInBusiness")} className={inputCls} style={inputStyle} />
+                      </div>
+                      <div>
+                        <Label>Cancellation Policy</Label>
+                        <div className="relative">
+                          <select name="cancellationPolicy" value={form.cancellationPolicy} onChange={set("cancellationPolicy")} className={selectCls} style={inputStyle}>
+                            <option value="FLEXIBLE">Flexible</option>
+                            <option value="MODERATE">Moderate</option>
+                            <option value="STRICT">Strict</option>
+                            <option value="NON_REFUNDABLE">Non-Refundable</option>
+                          </select>
+                          <ChevronDown className="absolute right-3 top-3 w-4 h-4 pointer-events-none" style={{ color: "#9AAAB0" }} />
+                        </div>
                       </div>
                     </div>
                     <div>
@@ -419,18 +593,86 @@ export default function HotelRegisterPage() {
 
                   <div className="bg-white rounded-2xl p-6 shadow-sm border space-y-5" style={{ borderColor: "#E8EDEF" }}>
                     <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "#9AAAB0" }}>Media Assets</p>
-                    <div>
-                      <Label>Cover Image URL</Label>
-                      {/* → HotelDraftRequest.coverImageUrl */}
-                      <input name="coverImageUrl" type="url" placeholder="https://res.cloudinary.com/..."
-                        value={form.coverImageUrl} onChange={set("coverImageUrl")} className={inputCls} style={inputStyle} />
-                      <Hint>Main hero image shown on your listing card.</Hint>
+                    
+                    {/* Cover Image File Picker & Preview */}
+                    <div className="space-y-2">
+                      <Label>Cover Image</Label>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl border border-dashed" style={{ borderColor: "#CBD5E1", background: "#F8FAFC" }}>
+                        {form.coverImageUrl ? (
+                          <div className="w-24 h-16 rounded-lg overflow-hidden shrink-0 border relative">
+                            <img src={form.coverImageUrl} alt="Cover Preview" className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-24 h-16 rounded-lg bg-gray-200 flex items-center justify-center shrink-0 text-xs font-bold text-gray-500">
+                            No File
+                          </div>
+                        )}
+                        <div className="flex-1 space-y-1">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                  if (event.target?.result) {
+                                    setForm(p => ({ ...p, coverImageUrl: event.target!.result as string }));
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                            className="text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#008080] file:text-white hover:file:bg-[#006666] cursor-pointer"
+                          />
+                          <Hint>Select an image file from your device, or paste a URL below.</Hint>
+                          <input
+                            name="coverImageUrl"
+                            type="url"
+                            placeholder="Or paste image URL: https://..."
+                            value={form.coverImageUrl}
+                            onChange={set("coverImageUrl")}
+                            className={inputCls}
+                            style={inputStyle}
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <Label>Promo Video URL</Label>
-                      {/* → HotelDraftRequest.videoUrl */}
-                      <input name="videoUrl" type="url" placeholder="https://youtube.com/watch?v=..."
-                        value={form.videoUrl} onChange={set("videoUrl")} className={inputCls} style={inputStyle} />
+
+                    {/* Promo Video File Picker */}
+                    <div className="space-y-2">
+                      <Label>Promo Video</Label>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl border border-dashed" style={{ borderColor: "#CBD5E1", background: "#F8FAFC" }}>
+                        <div className="flex-1 space-y-1">
+                          <input
+                            type="file"
+                            accept="video/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                  if (event.target?.result) {
+                                    setForm(p => ({ ...p, videoUrl: event.target!.result as string }));
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                            className="text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#003366] file:text-white hover:file:bg-[#002244] cursor-pointer"
+                          />
+                          <Hint>Select a video file from your device, or paste a URL below.</Hint>
+                          <input
+                            name="videoUrl"
+                            type="url"
+                            placeholder="Or paste video URL: https://..."
+                            value={form.videoUrl}
+                            onChange={set("videoUrl")}
+                            className={inputCls}
+                            style={inputStyle}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -443,26 +685,65 @@ export default function HotelRegisterPage() {
                 </div>
               )}
 
+              </fieldset>
+
               {/* ── Navigation ── */}
-              <div className="flex items-center justify-between mt-8 pt-6 border-t" style={{ borderColor: "#E8EDEF" }}>
-                {step > 1 ? (
-                  <button type="button" onClick={() => setStep(s => s - 1)}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-semibold transition-all hover:bg-white"
-                    style={{ borderColor: "#E4E9EA", color: "#4A5A62" }}>
-                    <ArrowLeft className="w-4 h-4" /> Back
-                  </button>
+              <div className="flex flex-wrap items-center justify-between gap-4 mt-8 pt-6 border-t" style={{ borderColor: "#E8EDEF" }}>
+                <div className="flex items-center gap-3">
+                  {step > 1 ? (
+                    <button type="button" onClick={() => setStep(s => s - 1)}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-semibold transition-all hover:bg-white"
+                      style={{ borderColor: "#E4E9EA", color: "#4A5A62" }}>
+                      <ArrowLeft className="w-4 h-4" /> Back
+                    </button>
+                  ) : (
+                    <Link href="/my-bookings"
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-semibold"
+                      style={{ borderColor: "#E4E9EA", color: "#4A5A62" }}>
+                      <ArrowLeft className="w-4 h-4" /> Cancel
+                    </Link>
+                  )}
+
+                  {/* Save Draft Button (Hidden if pending approval) */}
+                  {!isPendingApproval && (
+                    <button
+                      type="button"
+                      onClick={handleSaveDraft}
+                      disabled={draftSaving}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all hover:bg-slate-100 dark:hover:bg-white/10"
+                      style={{ borderColor: "#008080", color: "#008080" }}
+                    >
+                      <Save className="w-4 h-4" />
+                      {draftSaving ? "Saving Draft..." : "Save Draft"}
+                    </button>
+                  )}
+
+                  {draftSavedMsg && (
+                    <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Draft Saved!
+                    </span>
+                  )}
+                </div>
+
+                {isPendingApproval ? (
+                  step < TOTAL ? (
+                    <button type="button" onClick={() => setStep(s => s + 1)}
+                      className="flex items-center gap-2 px-7 py-2.5 rounded-xl text-sm font-semibold text-white transition-all bg-[#008080]">
+                      Continue <ArrowRight className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <button type="button" disabled
+                      className="flex items-center gap-2 px-7 py-2.5 rounded-xl text-sm font-semibold text-amber-800 bg-amber-200 dark:bg-amber-900/60 dark:text-amber-200 cursor-not-allowed">
+                      <Clock className="w-4 h-4" /> Profile Under Review
+                    </button>
+                  )
                 ) : (
-                  <Link href="/dashboard"
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-semibold"
-                    style={{ borderColor: "#E4E9EA", color: "#4A5A62" }}>
-                    <ArrowLeft className="w-4 h-4" /> Cancel
-                  </Link>
+                  <button type="submit" disabled={loading}
+                    className="flex items-center gap-2 px-7 py-2.5 rounded-xl text-sm font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-60"
+                    style={{ background: "linear-gradient(135deg,#003366,#008080)", boxShadow: "0 4px 16px rgba(0,51,102,0.25)" }}>
+                    {loading ? "Submitting…" : step < TOTAL ? (<>Continue <ArrowRight className="w-4 h-4" /></>) : (<><Check className="w-4 h-4" /> Submit Hotel Profile</>)}
+                  </button>
                 )}
-                <button type="submit" disabled={loading}
-                  className="flex items-center gap-2 px-7 py-2.5 rounded-xl text-sm font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-60"
-                  style={{ background: "linear-gradient(135deg,#003366,#008080)", boxShadow: "0 4px 16px rgba(0,51,102,0.25)" }}>
-                  {loading ? "Submitting…" : step < TOTAL ? (<>Continue <ArrowRight className="w-4 h-4" /></>) : (<><Check className="w-4 h-4" /> Submit Hotel Profile</>)}
-                </button>
               </div>
             </form>
           </div>

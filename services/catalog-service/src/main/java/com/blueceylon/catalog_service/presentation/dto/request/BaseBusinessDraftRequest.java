@@ -23,6 +23,13 @@ public class BaseBusinessDraftRequest {
     private String coverImageUrl;
     private List<String> galleryImageUrls;
     private String videoUrl;
+    private String sltdaLicenseNumber;
+    private Integer yearsInBusiness;
+    private List<com.blueceylon.catalog_service.domain.model.enums.SustainabilityBadge> sustainabilityBadges;
+    private com.blueceylon.catalog_service.domain.model.enums.CancellationPolicy cancellationPolicy;
+    private List<com.blueceylon.catalog_service.domain.model.enums.PaymentMethod> paymentMethods;
+    private Boolean depositRequired;
+    private Double depositPercentage;
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -58,4 +65,18 @@ public class BaseBusinessDraftRequest {
     public void setGalleryImageUrls(List<String> galleryImageUrls) { this.galleryImageUrls = galleryImageUrls; }
     public String getVideoUrl() { return videoUrl; }
     public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
+    public String getSltdaLicenseNumber() { return sltdaLicenseNumber; }
+    public void setSltdaLicenseNumber(String sltdaLicenseNumber) { this.sltdaLicenseNumber = sltdaLicenseNumber; }
+    public Integer getYearsInBusiness() { return yearsInBusiness; }
+    public void setYearsInBusiness(Integer yearsInBusiness) { this.yearsInBusiness = yearsInBusiness; }
+    public List<com.blueceylon.catalog_service.domain.model.enums.SustainabilityBadge> getSustainabilityBadges() { return sustainabilityBadges; }
+    public void setSustainabilityBadges(List<com.blueceylon.catalog_service.domain.model.enums.SustainabilityBadge> sustainabilityBadges) { this.sustainabilityBadges = sustainabilityBadges; }
+    public com.blueceylon.catalog_service.domain.model.enums.CancellationPolicy getCancellationPolicy() { return cancellationPolicy; }
+    public void setCancellationPolicy(com.blueceylon.catalog_service.domain.model.enums.CancellationPolicy cancellationPolicy) { this.cancellationPolicy = cancellationPolicy; }
+    public List<com.blueceylon.catalog_service.domain.model.enums.PaymentMethod> getPaymentMethods() { return paymentMethods; }
+    public void setPaymentMethods(List<com.blueceylon.catalog_service.domain.model.enums.PaymentMethod> paymentMethods) { this.paymentMethods = paymentMethods; }
+    public Boolean getDepositRequired() { return depositRequired; }
+    public void setDepositRequired(Boolean depositRequired) { this.depositRequired = depositRequired; }
+    public Double getDepositPercentage() { return depositPercentage; }
+    public void setDepositPercentage(Double depositPercentage) { this.depositPercentage = depositPercentage; }
 }

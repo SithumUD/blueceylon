@@ -31,14 +31,14 @@ public class PublicSearchController {
 
     @GetMapping("/businesses")
     public ResponseEntity<Page<BusinessSummaryResponse>> searchBusinesses(
-            @RequestParam(required = false) BusinessType type,
-            @RequestParam(required = false) SriLankanCity city,
+            @RequestParam(name = "type", required = false) BusinessType type,
+            @RequestParam(name = "city", required = false) SriLankanCity city,
             Pageable pageable) {
         return ResponseEntity.ok(searchService.searchBusinesses(type, city, pageable));
     }
 
     @GetMapping("/business/{id}")
-    public ResponseEntity<BusinessProfileResponse> getBusinessDetails(@PathVariable String id) {
+    public ResponseEntity<BusinessProfileResponse> getBusinessDetails(@PathVariable("id") String id) {
         return businessProfileService.getProfileById(id)
                 .map(mapper::toResponse)
                 .map(ResponseEntity::ok)
@@ -47,20 +47,20 @@ public class PublicSearchController {
 
     @GetMapping("/rooms")
     public ResponseEntity<Page<RoomResponse>> searchRooms(
-            @RequestParam(required = false) SriLankanCity city,
-            @RequestParam(required = false) Double minPrice,
-            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(name = "city", required = false) SriLankanCity city,
+            @RequestParam(name = "minPrice", required = false) Double minPrice,
+            @RequestParam(name = "maxPrice", required = false) Double maxPrice,
             Pageable pageable) {
         return ResponseEntity.ok(searchService.searchRooms(city, minPrice, maxPrice, pageable));
     }
 
     @GetMapping("/tours")
     public ResponseEntity<Page<TourPackageResponse>> searchTours(
-            @RequestParam(required = false) SriLankanCity city,
-            @RequestParam(required = false) TourCategory category,
-            @RequestParam(required = false) com.blueceylon.catalog_service.domain.model.enums.OwnerType providerType,
-            @RequestParam(required = false) Double minPrice,
-            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(name = "city", required = false) SriLankanCity city,
+            @RequestParam(name = "category", required = false) TourCategory category,
+            @RequestParam(name = "providerType", required = false) com.blueceylon.catalog_service.domain.model.enums.OwnerType providerType,
+            @RequestParam(name = "minPrice", required = false) Double minPrice,
+            @RequestParam(name = "maxPrice", required = false) Double maxPrice,
             Pageable pageable) {
         return ResponseEntity.ok(searchService.searchTours(city, category, providerType, minPrice, maxPrice, pageable));
     }

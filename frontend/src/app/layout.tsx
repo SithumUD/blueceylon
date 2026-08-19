@@ -1,3 +1,4 @@
+import "@/styles/tokens.css";
 import "./globals.css";
 import React from "react";
 import { fraunces, cabinet } from "@/styles/fonts";

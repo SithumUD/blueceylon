@@ -1,20 +1,59 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   ArrowLeft, ShieldCheck, MapPin, Star, Phone, Mail, MessageSquare, 
-  Globe, Briefcase, Calendar, Truck, ArrowRight, CheckCircle2, Navigation
+  Globe, Briefcase, Calendar, Truck, CheckCircle2, Navigation
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MOCK_AGENCIES } from "@/lib/mock-data/agencies";
+import { MOCK_AGENCIES, AGENCY_SPECIALIZATION_LABELS, VEHICLE_FLEET_LABELS } from "@/lib/mock-data/agencies";
+import { CITY_LABELS, REGION_LABELS } from "@/lib/mock-data/businesses";
+import { getBusinessById } from "@/lib/api/catalog";
+import { MapView } from "@/components/common/map-view";
 
 export default function TourAgencyDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
+  const [agency, setAgency] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const agency = MOCK_AGENCIES.find((a) => a.id === id);
+  useEffect(() => {
+    let isMounted = true;
+    async function loadAgency() {
+      if (!id || typeof id !== "string") return;
+      setLoading(true);
+      try {
+        const res = await getBusinessById(id);
+        if (isMounted && res) {
+          setAgency(res);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Fallback to mock data
+      }
+
+      const mock = MOCK_AGENCIES.find((a) => a.id === id);
+      if (isMounted) {
+        setAgency(mock || null);
+        setLoading(false);
+      }
+    }
+    loadAgency();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F4F6F8] dark:bg-[#081419]">
+        <div className="text-center space-y-4">
+          <div className="w-10 h-10 border-4 border-[#008080] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm font-semibold text-[#4A5A62] dark:text-[#A9BCC2]">Loading agency profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!agency) {
     return (
@@ -50,32 +89,34 @@ export default function TourAgencyDetailsPage() {
       {/* ══ HERO IMAGE ══ */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="relative w-full aspect-[21/9] sm:aspect-[24/9] rounded-[2rem] overflow-hidden shadow-lg bg-gray-100 dark:bg-gray-800 border border-[#E4E9EA] dark:border-[#20353D]">
-          <img src={agency.coverImage} alt={agency.agencyName} className="w-full h-full object-cover" />
+          <img src={agency.coverImageUrl || "https://images.unsplash.com/photo-1534177616072-ef7dc120449d"} alt={agency.name} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
           
           <div className="absolute bottom-8 left-8 right-8 text-white">
             <div className="flex items-center gap-2 mb-3">
               <span className="px-3 py-1 bg-[#003366]/80 backdrop-blur-md rounded-lg text-[10px] font-bold uppercase tracking-wider border border-white/20">
-                {agency.region.replace("_", " ")}
+                {REGION_LABELS[agency.region as keyof typeof REGION_LABELS] ?? agency.region}
               </span>
-              {agency.sltdaVerified && (
+              {(agency.verificationStatus === "VERIFIED" || agency.status === "APPROVED") && (
                 <span className="px-3 py-1 bg-[#FDA301]/90 backdrop-blur-md rounded-lg text-[10px] font-bold uppercase tracking-wider text-[#0E1B22] flex items-center gap-1 shadow-sm">
-                  <ShieldCheck className="w-3 h-3" /> SLTDA Certified ({agency.sltdaLicenseNumber})
+                  <ShieldCheck className="w-3 h-3" /> SLTDA Certified ({agency.sltdaLicenseNumber || agency.licenseNumber || "Verified"})
                 </span>
               )}
             </div>
             <h1 className="text-4xl sm:text-5xl font-bold leading-tight" style={{ fontFamily: "'Fraunces', serif" }}>
-              {agency.agencyName}
+              {agency.name}
             </h1>
-            <p className="text-lg text-white/90 font-medium mt-2 max-w-3xl">
-              "{agency.tagline}"
-            </p>
+            {agency.tagline && (
+              <p className="text-lg text-white/90 font-medium mt-2 max-w-3xl">
+                "{agency.tagline}"
+              </p>
+            )}
             <div className="flex items-center gap-4 mt-4 text-sm font-medium text-white/90">
               <span className="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full backdrop-blur-md">
-                <MapPin className="w-4 h-4 text-[#FDA301]" /> Head Office: {agency.city}
+                <MapPin className="w-4 h-4 text-[#FDA301]" /> Head Office: {CITY_LABELS[agency.city as keyof typeof CITY_LABELS] ?? agency.city}
               </span>
               <span className="flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full backdrop-blur-md">
-                <Star className="w-4 h-4 text-[#FDA301] fill-[#FDA301]" /> {agency.rating} ({agency.reviewCount} Reviews)
+                <Star className="w-4 h-4 text-[#FDA301] fill-[#FDA301]" /> {agency.averageRating ?? 5.0} ({agency.reviewCount ?? 0} Reviews)
               </span>
             </div>
           </div>
@@ -106,10 +147,10 @@ export default function TourAgencyDetailsPage() {
                 <h3 className="text-xl font-bold text-[#0E1B22] dark:text-[#EAF2F4]" style={{ fontFamily: "'Fraunces', serif" }}>Specializations</h3>
               </div>
               <ul className="space-y-3">
-                {agency.specializations.map((spec, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm font-semibold text-[#4A5A62] dark:text-[#A9BCC2]">
+                {(agency.specializations || []).map((spec: string) => (
+                  <li key={spec} className="flex items-start gap-2 text-sm font-semibold text-[#4A5A62] dark:text-[#A9BCC2]">
                     <CheckCircle2 className="w-4 h-4 text-[#1F9D6C] shrink-0 mt-0.5" />
-                    {spec}
+                    {AGENCY_SPECIALIZATION_LABELS[spec as keyof typeof AGENCY_SPECIALIZATION_LABELS] ?? spec}
                   </li>
                 ))}
               </ul>
@@ -121,10 +162,10 @@ export default function TourAgencyDetailsPage() {
                 <h3 className="text-xl font-bold text-[#0E1B22] dark:text-[#EAF2F4]" style={{ fontFamily: "'Fraunces', serif" }}>Fleet Options</h3>
               </div>
               <ul className="space-y-3">
-                {agency.fleetTypes.map((fleet, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm font-semibold text-[#4A5A62] dark:text-[#A9BCC2]">
+                {(agency.fleetTypes || []).map((fleet: string) => (
+                  <li key={fleet} className="flex items-start gap-2 text-sm font-semibold text-[#4A5A62] dark:text-[#A9BCC2]">
                     <CheckCircle2 className="w-4 h-4 text-[#1F9D6C] shrink-0 mt-0.5" />
-                    {fleet}
+                    {VEHICLE_FLEET_LABELS[fleet as keyof typeof VEHICLE_FLEET_LABELS] ?? fleet}
                   </li>
                 ))}
               </ul>
@@ -134,32 +175,46 @@ export default function TourAgencyDetailsPage() {
           <hr className="border-[#E4E9EA] dark:border-[#20353D]" />
 
           {/* Featured Package */}
-          <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-[#0E1B22] dark:text-[#EAF2F4]" style={{ fontFamily: "'Fraunces', serif" }}>Featured Tour Package</h2>
-              <Link href={`/tours?provider=${agency.id}`}>
-                <Button variant="secondary" size="sm" className="rounded-xl font-bold">View All Tours</Button>
-              </Link>
-            </div>
-            
-            <div className="p-6 rounded-[2rem] bg-gradient-to-br from-[#003366] to-[#005F73] text-white flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-lg">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded-md mb-1">
-                  <Calendar className="w-3.5 h-3.5" /> {agency.featuredPackage.duration}
-                </div>
-                <h3 className="text-2xl font-bold" style={{ fontFamily: "'Fraunces', serif" }}>{agency.featuredPackage.title}</h3>
-                <p className="text-white/80 text-sm font-medium">An exclusive itinerary curated by {agency.agencyName}.</p>
-              </div>
-              
-              <div className="bg-white text-[#0E1B22] p-5 rounded-[1.5rem] flex flex-col items-center justify-center shrink-0 min-w-[160px] shadow-sm">
-                <div className="text-[10px] uppercase font-bold text-[#9AAAB0] mb-1">Starting From</div>
-                <div className="text-3xl font-black text-[#003366]">${agency.featuredPackage.price}</div>
-                <div className="text-xs font-semibold text-[#4A5A62] mt-0.5 mb-4">per person</div>
-                <Link href={`/tours`}>
-                  <Button className="w-full rounded-xl font-bold bg-[#FDA301] hover:bg-[#E59300] text-black">Explore Itinerary</Button>
+          {agency.featuredPackage && (
+            <section>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-[#0E1B22] dark:text-[#EAF2F4]" style={{ fontFamily: "'Fraunces', serif" }}>Featured Tour Package</h2>
+                <Link href={`/tours?provider=${agency.id}`}>
+                  <Button variant="secondary" size="sm" className="rounded-xl font-bold">View All Tours</Button>
                 </Link>
               </div>
-            </div>
+              
+              <div className="p-6 rounded-[2rem] bg-gradient-to-br from-[#003366] to-[#005F73] text-white flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-lg">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded-md mb-1">
+                    <Calendar className="w-3.5 h-3.5" /> {agency.featuredPackage.duration}
+                  </div>
+                  <h3 className="text-2xl font-bold" style={{ fontFamily: "'Fraunces', serif" }}>{agency.featuredPackage.title}</h3>
+                  <p className="text-white/80 text-sm font-medium">An exclusive itinerary curated by {agency.name}.</p>
+                </div>
+                
+                <div className="bg-white text-[#0E1B22] p-5 rounded-[1.5rem] flex flex-col items-center justify-center shrink-0 min-w-[160px] shadow-sm">
+                  <div className="text-[10px] uppercase font-bold text-[#9AAAB0] mb-1">Starting From</div>
+                  <div className="text-3xl font-black text-[#003366]">${agency.featuredPackage.price}</div>
+                  <div className="text-xs font-semibold text-[#4A5A62] mt-0.5 mb-4">{agency.featuredPackage.currency} per person</div>
+                  <Link href={`/tours`}>
+                    <Button className="w-full rounded-xl font-bold bg-[#FDA301] hover:bg-[#E59300] text-black">Explore Itinerary</Button>
+                  </Link>
+                </div>
+              </div>
+            </section>
+          )}
+
+          <hr className="border-[#E4E9EA] dark:border-[#20353D]" />
+
+          {/* Office Location Google Map */}
+          <section>
+            <MapView
+              latitude={Number(agency.latitude || 6.9271)}
+              longitude={Number(agency.longitude || 79.8612)}
+              title={`${agency.name} — Head Office`}
+              address={agency.addressLine ? `${agency.addressLine}, ${CITY_LABELS[agency.city as keyof typeof CITY_LABELS] || agency.city}` : undefined}
+            />
           </section>
 
         </div>
@@ -177,7 +232,7 @@ export default function TourAgencyDetailsPage() {
                 </div>
                 <div>
                   <div className="text-[10px] font-bold text-[#9AAAB0] uppercase tracking-wider mb-1">Direct Line</div>
-                  <div className="text-sm font-bold text-[#0E1B22] dark:text-[#EAF2F4]">{agency.contactPhone}</div>
+                  <div className="text-sm font-bold text-[#0E1B22] dark:text-[#EAF2F4]">{agency.contactPhone || "Not provided"}</div>
                 </div>
               </div>
               
@@ -187,7 +242,7 @@ export default function TourAgencyDetailsPage() {
                 </div>
                 <div>
                   <div className="text-[10px] font-bold text-[#9AAAB0] uppercase tracking-wider mb-1">WhatsApp</div>
-                  <div className="text-sm font-bold text-[#0E1B22] dark:text-[#EAF2F4]">{agency.whatsappNumber}</div>
+                  <div className="text-sm font-bold text-[#0E1B22] dark:text-[#EAF2F4]">{agency.whatsappNumber || agency.contactPhone || "Not provided"}</div>
                 </div>
               </div>
 
@@ -197,19 +252,21 @@ export default function TourAgencyDetailsPage() {
                 </div>
                 <div>
                   <div className="text-[10px] font-bold text-[#9AAAB0] uppercase tracking-wider mb-1">Email Address</div>
-                  <div className="text-sm font-bold text-[#0E1B22] dark:text-[#EAF2F4]">{agency.contactEmail}</div>
+                  <div className="text-sm font-bold text-[#0E1B22] dark:text-[#EAF2F4]">{agency.contactEmail || "Not provided"}</div>
                 </div>
               </div>
               
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-                  <Globe className="w-4 h-4 text-[#4A5A62]" />
+              {agency.website && (
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+                    <Globe className="w-4 h-4 text-[#4A5A62]" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-[#9AAAB0] uppercase tracking-wider mb-1">Website</div>
+                    <a href={agency.website} target="_blank" rel="noreferrer" className="text-sm font-bold text-[#008080] dark:text-[#3FCFC0] hover:underline">Visit Official Site</a>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-[10px] font-bold text-[#9AAAB0] uppercase tracking-wider mb-1">Website</div>
-                  <Link href="#" className="text-sm font-bold text-[#008080] dark:text-[#3FCFC0] hover:underline">Visit Official Site</Link>
-                </div>
-              </div>
+              )}
             </div>
 
             <Button 
@@ -220,7 +277,7 @@ export default function TourAgencyDetailsPage() {
             </Button>
             
             <p className="text-xs text-center text-[#4A5A62] dark:text-[#A9BCC2] mt-4 font-medium">
-              Response usually within {Math.max(1, Math.floor(Math.random() * 5))} hours
+              Response usually within 2 hours
             </p>
 
             <div className="mt-6 pt-6 border-t border-[#E4E9EA] dark:border-[#20353D]">
@@ -230,7 +287,7 @@ export default function TourAgencyDetailsPage() {
                 </div>
                 <div>
                   <div className="text-[10px] font-bold text-[#9AAAB0] uppercase tracking-wider">Experience</div>
-                  <div className="text-sm font-bold text-[#0E1B22] dark:text-[#EAF2F4]">{agency.yearsInOperation} Years in Operation</div>
+                  <div className="text-sm font-bold text-[#0E1B22] dark:text-[#EAF2F4]">{agency.yearsInBusiness || agency.yearsInOperation || 1} Years in Operation</div>
                 </div>
               </div>
             </div>

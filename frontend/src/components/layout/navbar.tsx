@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import {
   Moon, Sun, UserCheck, Menu, X, ChevronDown,
   Hotel, Briefcase, User, Sparkles,
-  LayoutDashboard, ShieldAlert, Settings, LogOut, UserCircle2, LogIn
+  LayoutDashboard, ShieldAlert, Settings, LogOut, UserCircle2, LogIn,
+  CalendarCheck, MessageSquareQuote
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
@@ -224,6 +225,28 @@ export function Navbar() {
                           <UserCircle2 className="w-4 h-4" />
                         </div>
                         <span>My Profile</span>
+                      </Link>
+
+                      <Link
+                        href="/my-bookings"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-sm font-semibold text-[#0E1B22] dark:text-[#EAF2F4]"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-[#008080]/10 text-[#008080] flex items-center justify-center shrink-0">
+                          <CalendarCheck className="w-4 h-4" />
+                        </div>
+                        <span>My Bookings</span>
+                      </Link>
+
+                      <Link
+                        href="/my-quotes"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-sm font-semibold text-[#0E1B22] dark:text-[#EAF2F4]"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-[#003366]/10 text-[#003366] dark:text-[#008080] flex items-center justify-center shrink-0">
+                          <MessageSquareQuote className="w-4 h-4" />
+                        </div>
+                        <span>My Quotes</span>
                       </Link>
 
                       <Link

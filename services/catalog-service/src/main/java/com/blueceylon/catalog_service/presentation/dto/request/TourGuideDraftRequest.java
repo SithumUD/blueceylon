@@ -19,9 +19,19 @@ public class TourGuideDraftRequest {
     private List<String> languagesSpoken;
     private Integer yearsOfExperience;
     private VehicleType vehicleType;
+    private String vehicleModel;
+    private Boolean vehicleAirConditioned;
+    private com.blueceylon.catalog_service.domain.model.enums.Currency currency;
     private Integer maxGroupSizeGuided;
     private Double dailyRate;
     private Double halfDayRate;
+
+    public String getVehicleModel() { return vehicleModel; }
+    public void setVehicleModel(String vehicleModel) { this.vehicleModel = vehicleModel; }
+    public Boolean getVehicleAirConditioned() { return vehicleAirConditioned; }
+    public void setVehicleAirConditioned(Boolean vehicleAirConditioned) { this.vehicleAirConditioned = vehicleAirConditioned; }
+    public com.blueceylon.catalog_service.domain.model.enums.Currency getCurrency() { return currency; }
+    public void setCurrency(com.blueceylon.catalog_service.domain.model.enums.Currency currency) { this.currency = currency; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

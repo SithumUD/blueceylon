@@ -2,7 +2,9 @@ package com.blueceylon.catalog_service.domain.model.enums;
 
 public enum VehicleType {
     TUK_TUK,
+    TUKTUK,
     CAR,
+    SEDAN,
     VAN,
     SUV,
     MINIBUS,

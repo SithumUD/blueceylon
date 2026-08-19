@@ -5,12 +5,15 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
 
 @Entity
-@Table(name = "outbox_events")
+@Table(name = "outbox_events", indexes = {
+    @Index(name = "idx_outbox_status_created", columnList = "status, createdAt")
+})
 public class OutboxEvent {
 
     @Id

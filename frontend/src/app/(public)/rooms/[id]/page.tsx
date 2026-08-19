@@ -1,46 +1,96 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   ArrowLeft, BedDouble, Users, Maximize, Mountain, Wind, 
-  CigaretteOff, Clock, ShieldCheck, MapPin, Star, CalendarDays,
-  CheckCircle2, CreditCard
+  CigaretteOff, Clock, ShieldCheck, MapPin, Star,
+  CheckCircle2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MOCK_BUSINESSES } from "@/lib/mock-data/businesses";
+import { MOCK_BUSINESSES, CITY_LABELS, REGION_LABELS } from "@/lib/mock-data/businesses";
+import { getRoomById } from "@/lib/api/catalog";
 import { Badge } from "@/components/ui/badge";
+import { MapView } from "@/components/common/map-view";
 
 export default function RoomDetailsPage() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params.id as string;
   const router = useRouter();
 
-  // Find the room from the flattened mock data
-  const roomData = MOCK_BUSINESSES.flatMap(b => (b.rooms || []).map(r => ({
-    ...r,
-    hotelId: b.id,
-    hotelName: b.name,
-    hotelCity: b.location.city,
-    hotelRegion: b.location.region,
-    hotelAddress: b.location.address,
-    hotelRating: b.rating,
-    sltdaVerified: b.sltdaVerified,
-    // Add mock data for the backend fields that aren't strictly in the simple mock interface
-    roomType: r.name.includes("Suite") ? "SUITE" : r.name.includes("Family") ? "FAMILY" : "DOUBLE",
-    viewType: "MOUNTAIN_VIEW",
-    sizeSquareMeters: 45,
-    smokingAllowed: false,
-    isHourlyBookable: true,
-    bedCount: r.capacity > 2 ? 2 : 1,
-  }))).find(r => r.id === id);
+  const [roomData, setRoomData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    async function loadRoom() {
+      if (!id) return;
+      setLoading(true);
+      try {
+        const res = await getRoomById(id);
+        if (isMounted && res && res.id) {
+          setRoomData(res);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Fallback to local mock data lookup
+      }
+
+      const mock = MOCK_BUSINESSES.flatMap(b => (b.rooms || []).map(r => ({
+        id: r.id,
+        roomNumber: r.roomNumber,
+        roomType: r.roomType,
+        displayName: r.displayName,
+        pricePerNight: r.pricePerNight,
+        currency: r.currency,
+        capacity: r.capacity,
+        bedCount: r.bedCount,
+        sizeSquareMeters: r.sizeSquareMeters || 45,
+        totalUnits: r.totalUnits,
+        availableFrom: r.availableFrom,
+        availableTo: r.availableTo,
+        imageUrls: r.imageUrls || [],
+        amenities: r.amenities || [],
+        viewType: r.viewType || "OCEAN_VIEW",
+        bedConfiguration: r.bedConfiguration || "1 King Bed",
+        smokingAllowed: r.smokingAllowed || false,
+        isHourlyBookable: r.isHourlyBookable || false,
+        hotelId: b.id,
+        hotelName: b.name,
+        hotelCity: CITY_LABELS[b.city] ?? b.city,
+        hotelRegion: REGION_LABELS[b.region] ?? b.region,
+        hotelAddress: b.addressLine,
+        hotelRating: b.averageRating,
+        sltdaVerified: b.verificationStatus === "VERIFIED",
+      }))).find(r => r.id === id);
+
+      if (isMounted) {
+        setRoomData(mock || null);
+        setLoading(false);
+      }
+    }
+    loadRoom();
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
 
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(1);
   const [isBooking, setIsBooking] = useState(false);
 
-  // If room not found (which happens if navigated directly without proper id in this mock environment)
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F4F6F8] dark:bg-[#081419] text-sm text-[#4A5A62]">
+        Loading room details...
+      </div>
+    );
+  }
+
+  // If room not found
   if (!roomData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F4F6F8] dark:bg-[#081419]">
@@ -73,7 +123,7 @@ export default function RoomDetailsPage() {
           </button>
           
           <div className="flex items-center gap-4">
-            <span className="text-lg font-bold text-[#003366] dark:text-[#3FCFC0]">${roomData.pricePerNight} <span className="text-xs text-[#9AAAB0] font-normal">/ night</span></span>
+            <span className="text-lg font-bold text-[#003366] dark:text-[#3FCFC0]">${roomData.pricePerNight} <span className="text-xs text-[#9AAAB0] font-normal">{roomData.currency} / night</span></span>
             <Button size="sm" onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} className="font-bold bg-[#FDA301] hover:bg-[#E59300] text-[#0E1B22] rounded-xl px-5">
               Check Availability
             </Button>
@@ -84,7 +134,7 @@ export default function RoomDetailsPage() {
       {/* ══ HERO IMAGE ══ */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="relative w-full aspect-[21/9] sm:aspect-[24/9] rounded-[2rem] overflow-hidden shadow-lg bg-gray-100 dark:bg-gray-800">
-          <img src={roomData.image || "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b"} alt={roomData.name} className="w-full h-full object-cover" />
+          <img src={roomData.imageUrls[0] || "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b"} alt={roomData.displayName} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
           
           <div className="absolute bottom-8 left-8 right-8 text-white">
@@ -99,7 +149,7 @@ export default function RoomDetailsPage() {
               )}
             </div>
             <h1 className="text-4xl sm:text-5xl font-bold leading-tight" style={{ fontFamily: "'Fraunces', serif" }}>
-              {roomData.name}
+              {roomData.displayName}
             </h1>
             <div className="flex items-center gap-4 mt-3 text-sm font-medium text-white/90">
               <Link href={`/business/${roomData.hotelId}`} className="flex items-center gap-1.5 hover:text-[#3FCFC0] transition-colors underline decoration-white/30 underline-offset-4">
@@ -125,7 +175,7 @@ export default function RoomDetailsPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {[
                 { icon: Users, label: "Capacity", value: `Up to ${roomData.capacity} Guests` },
-                { icon: BedDouble, label: "Bed Configuration", value: `${roomData.bedCount} ${roomData.bedType}` },
+                { icon: BedDouble, label: "Bed Configuration", value: `${roomData.bedCount}x ${roomData.bedConfiguration}` },
                 { icon: Maximize, label: "Room Size", value: `${roomData.sizeSquareMeters} m²` },
                 { icon: Mountain, label: "View Type", value: roomData.viewType.replace("_", " ") },
                 { icon: CigaretteOff, label: "Smoking", value: roomData.smokingAllowed ? "Allowed" : "Non-Smoking" },
@@ -153,7 +203,7 @@ export default function RoomDetailsPage() {
           <section>
             <h2 className="text-2xl font-bold text-[#0E1B22] dark:text-[#EAF2F4] mb-4" style={{ fontFamily: "'Fraunces', serif" }}>About this Space</h2>
             <p className="text-sm text-[#4A5A62] dark:text-[#A9BCC2] leading-relaxed">
-              Experience the perfect blend of luxury and comfort in this beautiful {roomData.name.toLowerCase()} at {roomData.hotelName}. 
+              Experience the perfect blend of luxury and comfort in this beautiful {roomData.displayName.toLowerCase()} at {roomData.hotelName}. 
               Carefully designed to reflect the local heritage while offering modern amenities, this space provides a tranquil retreat 
               after a long day of exploring {roomData.hotelRegion}. Enjoy breathtaking {roomData.viewType.replace("_", " ").toLowerCase()}s right from your window.
             </p>
@@ -165,12 +215,24 @@ export default function RoomDetailsPage() {
           <section>
             <h2 className="text-2xl font-bold text-[#0E1B22] dark:text-[#EAF2F4] mb-4" style={{ fontFamily: "'Fraunces', serif" }}>Included Amenities</h2>
             <div className="grid grid-cols-2 gap-4">
-              {["High-Speed Wi-Fi", "Air Conditioning", "En-suite Bathroom", "Mini Bar & Fridge", "Flat-screen TV", "Daily Housekeeping", "Safe Deposit Box", "Tea/Coffee Maker"].map((amenity, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm font-semibold text-[#0E1B22] dark:text-[#EAF2F4]">
-                  <CheckCircle2 className="w-4 h-4 text-[#1F9D6C]" /> {amenity}
+              {(roomData.amenities || []).map((amenity: any, idx: number) => (
+                <div key={typeof amenity === "object" ? amenity.id || idx : `${amenity}-${idx}`} className="flex items-center gap-2 text-sm font-semibold text-[#0E1B22] dark:text-[#EAF2F4]">
+                  <CheckCircle2 className="w-4 h-4 text-[#1F9D6C]" /> {typeof amenity === "object" ? amenity.name : amenity}
                 </div>
               ))}
             </div>
+          </section>
+
+          <hr className="border-[#E4E9EA] dark:border-[#20353D]" />
+
+          {/* Hotel Location Google Map */}
+          <section>
+            <MapView
+              latitude={Number(roomData.latitude || 6.9271)}
+              longitude={Number(roomData.longitude || 79.8612)}
+              title={roomData.hotelName}
+              address={roomData.hotelAddress ? `${roomData.hotelAddress}, ${roomData.hotelCity}` : `${roomData.hotelCity}, ${roomData.hotelRegion}`}
+            />
           </section>
 
         </div>
@@ -181,7 +243,7 @@ export default function RoomDetailsPage() {
             
             <div className="flex items-baseline gap-1 mb-6">
               <span className="text-3xl font-bold text-[#003366] dark:text-[#3FCFC0]">${roomData.pricePerNight}</span>
-              <span className="text-sm font-medium text-[#4A5A62] dark:text-[#A9BCC2]">USD / night</span>
+              <span className="text-sm font-medium text-[#4A5A62] dark:text-[#A9BCC2]"> {roomData.currency} / night</span>
             </div>
 
             <div className="space-y-4 mb-6">

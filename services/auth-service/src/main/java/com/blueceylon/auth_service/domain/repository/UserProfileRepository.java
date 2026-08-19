@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface UserProfileRepository extends JpaRepository<UserProfile, String> {
     Optional<UserProfile> findByKeycloakSub(String keycloakSub);
     Optional<UserProfile> findByEmail(String email);
+    Optional<UserProfile> findByVerificationToken(String verificationToken);
 
     List<UserProfile> findByRole(UserRole role);
 

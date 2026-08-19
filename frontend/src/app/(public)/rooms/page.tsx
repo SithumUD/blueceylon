@@ -1,17 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Star, MapPin, ShieldCheck, BedDouble, Search, Filter, ArrowRight, Check, Users } from "lucide-react";
+import { Star, MapPin, ShieldCheck, BedDouble, Filter, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { MOCK_BUSINESSES } from "@/lib/mock-data/businesses";
+import { MOCK_BUSINESSES, CITY_LABELS } from "@/lib/mock-data/businesses";
+import { searchRooms } from "@/lib/api/catalog";
 
 export default function RoomsPage() {
+  return (
+    <Suspense fallback={<div className="max-w-7xl mx-auto p-8 text-center text-sm text-[#4A5A62]">Loading rooms...</div>}>
+      <RoomsPageContent />
+    </Suspense>
+  );
+}
+
+function RoomsPageContent() {
   const searchParams = useSearchParams();
-  const queryCity = searchParams.get("city") || "ALL";
+  const queryCity = searchParams.get("city")?.toUpperCase() || "ALL";
   const queryCheckIn = searchParams.get("checkIn") || "";
   const queryCheckOut = searchParams.get("checkOut") || "";
   const queryGuests = searchParams.get("guests") || "";
@@ -30,28 +39,61 @@ export default function RoomsPage() {
     maxPrice: 1000,
   });
 
+  const [allRooms, setAllRooms] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const handleFilterChange = (field: string, value: any) => {
     setFilters((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Flatten rooms and apply filters
-  const allRooms = MOCK_BUSINESSES.flatMap((b) =>
-    (b.rooms || []).map((r) => ({
-      ...r,
-      hotelId: b.id,
-      hotelName: b.name,
-      city: b.location.city,
-      hotelRating: b.rating,
-      hotelCoverImage: b.coverImage,
-      sltdaVerified: b.sltdaVerified,
-    }))
-  ).filter((room) => {
-    if (filters.city !== "ALL" && room.city.toLowerCase() !== filters.city.toLowerCase()) return false;
-    if (filters.roomType !== "ALL" && room.name.toUpperCase().indexOf(filters.roomType) === -1) return false;
-    if (filters.capacity && room.capacity < Number(filters.capacity)) return false;
-    if (room.pricePerNight > filters.maxPrice) return false;
-    return true;
-  });
+  React.useEffect(() => {
+    let isMounted = true;
+    async function loadRooms() {
+      setLoading(true);
+      try {
+        const res = await searchRooms({
+          city: filters.city !== "ALL" ? filters.city : undefined,
+          maxPrice: filters.maxPrice,
+        });
+        if (isMounted && res?.content && res.content.length > 0) {
+          setAllRooms(res.content);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Fallback to local dataset if backend service is unreachable
+      }
+      const mockRooms = MOCK_BUSINESSES.flatMap((b) =>
+        (b.rooms || []).map((r) => ({
+          ...r,
+          hotelId: b.id,
+          hotelName: b.name,
+          city: b.city,
+          hotelRating: b.averageRating,
+          hotelCoverImage: b.coverImageUrl,
+          sltdaVerified: b.verificationStatus === "VERIFIED",
+        }))
+      ).filter((room) => {
+        if (filters.city !== "ALL" && room.city !== filters.city) return false;
+        if (filters.roomType !== "ALL" && room.roomType !== filters.roomType) return false;
+        if (filters.viewType !== "ALL" && room.viewType !== filters.viewType) return false;
+        if (filters.capacity && room.capacity < Number(filters.capacity)) return false;
+        if (filters.bedCount && room.bedCount < Number(filters.bedCount)) return false;
+        if (filters.smokingAllowed && !room.smokingAllowed) return false;
+        if (filters.isHourlyBookable && !room.isHourlyBookable) return false;
+        if (room.pricePerNight > filters.maxPrice) return false;
+        return true;
+      });
+      if (isMounted) {
+        setAllRooms(mockRooms);
+        setLoading(false);
+      }
+    }
+    loadRooms();
+    return () => {
+      isMounted = false;
+    };
+  }, [filters]);
 
   return (
     <div className="min-h-screen bg-[#F4F6F8] dark:bg-[#081419] transition-colors pb-16">
@@ -88,13 +130,13 @@ export default function RoomsPage() {
                 <label className="text-xs uppercase font-bold tracking-wider text-[#4A5A62] dark:text-[#A9BCC2]">Place / City</label>
                 <select value={filters.city} onChange={(e) => handleFilterChange("city", e.target.value)} className="w-full p-3 rounded-xl border border-[#E4E9EA] dark:border-[#20353D] bg-gray-50 dark:bg-[#15323D] text-sm font-semibold text-[#0E1B22] dark:text-[#EAF2F4] focus:ring-2 focus:ring-[#003366] outline-none cursor-pointer">
                   <option value="ALL">All Sri Lanka</option>
-                  <option value="Ella">Ella (Hill Country)</option>
-                  <option value="Galle">Galle (South Coast)</option>
-                  <option value="Sigiriya">Sigiriya (Cultural)</option>
-                  <option value="Mirissa">Mirissa (South Coast)</option>
-                  <option value="Kandy">Kandy (Central)</option>
-                  <option value="Colombo">Colombo (Capital)</option>
-                  <option value="Nuwara Eliya">Nuwara Eliya (Tea)</option>
+                  <option value="ELLA">Ella (Hill Country)</option>
+                  <option value="GALLE">Galle (South Coast)</option>
+                  <option value="SIGIRIYA">Sigiriya (Cultural)</option>
+                  <option value="MIRISSA">Mirissa (South Coast)</option>
+                  <option value="KANDY">Kandy (Central)</option>
+                  <option value="COLOMBO">Colombo (Capital)</option>
+                  <option value="NUWARA_ELIYA">Nuwara Eliya (Tea)</option>
                 </select>
               </div>
 
@@ -115,7 +157,7 @@ export default function RoomsPage() {
               <div className="space-y-3">
                 <label className="text-xs uppercase font-bold tracking-wider text-[#4A5A62] dark:text-[#A9BCC2]">Room Category</label>
                 <div className="flex flex-col gap-2">
-                  {["ALL", "SINGLE", "DOUBLE", "SUITE", "FAMILY"].map((type) => (
+                  {["ALL", "STANDARD", "DELUXE", "SUPERIOR", "SUITE", "FAMILY"].map((type) => (
                     <label key={type} className="flex items-center gap-3 cursor-pointer group">
                       <input type="radio" name="roomType" checked={filters.roomType === type} onChange={() => handleFilterChange("roomType", type)} className="w-4 h-4 accent-[#003366] cursor-pointer" />
                       <span className="text-sm font-semibold text-[#0E1B22] dark:text-[#EAF2F4] group-hover:text-[#003366] dark:group-hover:text-[#3FCFC0] transition-colors">{type === "ALL" ? "Any Category" : type}</span>
@@ -129,12 +171,12 @@ export default function RoomsPage() {
                 <label className="text-xs uppercase font-bold tracking-wider text-[#4A5A62] dark:text-[#A9BCC2]">Room View</label>
                 <select value={filters.viewType} onChange={(e) => handleFilterChange("viewType", e.target.value)} className="w-full p-3 rounded-xl border border-[#E4E9EA] dark:border-[#20353D] bg-gray-50 dark:bg-[#15323D] text-sm font-semibold text-[#0E1B22] dark:text-[#EAF2F4] focus:ring-2 focus:ring-[#003366] outline-none">
                   <option value="ALL">Any View</option>
-                  <option value="SEA_VIEW">Sea View</option>
+                  <option value="OCEAN_VIEW">Ocean View</option>
                   <option value="GARDEN_VIEW">Garden View</option>
                   <option value="MOUNTAIN_VIEW">Mountain View</option>
                   <option value="POOL_VIEW">Pool View</option>
                   <option value="CITY_VIEW">City View</option>
-                  <option value="NONE">No Specific View</option>
+                  <option value="NO_VIEW">No Specific View</option>
                 </select>
               </div>
 
@@ -190,9 +232,9 @@ export default function RoomsPage() {
             {allRooms.map((room, idx) => (
               <div key={idx} className="group bg-white dark:bg-[#0F252E] rounded-[1.5rem] border border-[#E4E9EA] dark:border-[#20353D] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col">
                 <div className="relative aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-gray-800">
-                  <img src={room.hotelCoverImage} alt={room.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={room.hotelCoverImage} alt={room.displayName} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute top-3 right-3 bg-white/90 dark:bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-[#0E1B22] dark:text-white flex items-center gap-1 shadow-sm">
-                    <Star className="w-3 h-3 text-[#FDA301] fill-[#FDA301]" /> {room.hotelRating}
+                    <Star className="w-3.5 h-3.5 text-[#FDA301] fill-[#FDA301]" /> {room.hotelRating}
                   </div>
                   {room.sltdaVerified && (
                     <div className="absolute top-3 left-3">
@@ -205,7 +247,7 @@ export default function RoomsPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <h3 className="text-lg font-bold text-[#0E1B22] dark:text-[#EAF2F4] line-clamp-1" style={{ fontFamily: "'Fraunces', serif" }}>
-                        {room.name}
+                        {room.displayName}
                       </h3>
                       <div className="flex items-center gap-1.5 mt-2 text-[10px] font-bold text-[#008080] dark:text-[#3FCFC0] uppercase tracking-wider bg-[#008080]/10 inline-flex px-2 py-1 rounded-md">
                         {room.hotelName}
@@ -218,10 +260,10 @@ export default function RoomsPage() {
                       <Users className="w-3.5 h-3.5" /> Max {room.capacity} Guests
                     </div>
                     <div className="flex items-center gap-1.5 text-xs font-medium text-[#4A5A62] dark:text-[#A9BCC2]">
-                      <BedDouble className="w-3.5 h-3.5" /> {room.bedType}
+                      <BedDouble className="w-3.5 h-3.5" /> {room.bedConfiguration}
                     </div>
                     <div className="flex items-center gap-1.5 text-xs font-medium text-[#4A5A62] dark:text-[#A9BCC2]">
-                      <MapPin className="w-3.5 h-3.5" /> {room.city}
+                      <MapPin className="w-3.5 h-3.5" /> {CITY_LABELS[room.city] ?? room.city}
                     </div>
                     {room.sltdaVerified && (
                       <div className="flex items-center gap-1.5 text-xs font-bold text-[#FDA301]">
@@ -236,7 +278,7 @@ export default function RoomsPage() {
                     <div className="text-[10px] text-[#9AAAB0] font-semibold uppercase">Nightly Rate</div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-xl font-bold text-[#003366] dark:text-[#3FCFC0]">${room.pricePerNight}</span>
-                      <span className="text-xs text-[#9AAAB0]">USD</span>
+                      <span className="text-xs text-[#9AAAB0]"> {room.currency}</span>
                     </div>
                   </div>
                   <Link href={`/rooms/${room.id}`}>

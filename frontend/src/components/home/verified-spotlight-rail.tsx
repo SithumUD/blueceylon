@@ -1,12 +1,11 @@
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Star, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { MOCK_BUSINESSES } from "@/lib/mock-data/businesses";
+import { MOCK_BUSINESSES, CITY_LABELS, REGION_LABELS } from "@/lib/mock-data/businesses";
 
 export function VerifiedSpotlightRail() {
-  const verifiedListings = MOCK_BUSINESSES.filter((b) => b.sltdaVerified);
+  const verifiedListings = MOCK_BUSINESSES.filter((b) => b.verificationStatus === "VERIFIED");
 
   return (
     <section className="space-y-6">
@@ -34,7 +33,7 @@ export function VerifiedSpotlightRail() {
             {/* Image Container */}
             <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
               <img
-                src={item.coverImage}
+                src={item.coverImageUrl}
                 alt={item.name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
@@ -43,7 +42,7 @@ export function VerifiedSpotlightRail() {
               </div>
               <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-white text-xs font-semibold flex items-center gap-1">
                 <Star className="w-3.5 h-3.5 text-[#FDA301] fill-[#FDA301]" />
-                <span>{item.rating}</span>
+                <span>{item.averageRating}</span>
                 <span className="text-gray-300">({item.reviewCount})</span>
               </div>
             </div>
@@ -52,7 +51,7 @@ export function VerifiedSpotlightRail() {
             <div className="p-5 space-y-3">
               <div className="flex items-center gap-1.5 text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
                 <MapPin className="w-3.5 h-3.5 text-[#008080]" />
-                <span>{item.location.city}, {item.location.region}</span>
+                <span>{CITY_LABELS[item.city] ?? item.city}, {REGION_LABELS[item.region] ?? item.region}</span>
               </div>
 
               <h3 className="font-display font-bold text-lg text-[#0E1B22] dark:text-[#EAF2F4] group-hover:text-[#003366] dark:group-hover:text-[#3FCFC0] transition-colors line-clamp-1">

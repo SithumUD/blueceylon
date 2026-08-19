@@ -21,12 +21,18 @@ public class RoleManagementService {
     @Transactional
     public void escalateToBusinessOwner(String keycloakSub, String businessType) {
         UserProfile profile = userProfileRepository.findByKeycloakSub(keycloakSub)
-                .orElseThrow(() -> new RuntimeException("Profile not found"));
+                .orElse(null);
 
-        profile.setRole(UserRole.BUSINESS_OWNER);
+        if (profile == null) {
+            System.err.println("Warning: Could not find UserProfile for keycloakSub: " + keycloakSub);
+            return;
+        }
+
+        UserRole targetRole = "TOUR_GUIDE".equalsIgnoreCase(businessType) ? UserRole.TOUR_GUIDE : UserRole.BUSINESS_OWNER;
+        profile.setRole(targetRole);
         profile.setBusinessType(businessType);
         userProfileRepository.save(profile);
 
-        adminClient.updateUserRole(keycloakSub, UserRole.BUSINESS_OWNER);
+        adminClient.updateUserRole(keycloakSub, targetRole);
     }
 }

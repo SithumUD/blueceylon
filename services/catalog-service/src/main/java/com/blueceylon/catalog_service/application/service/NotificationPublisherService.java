@@ -28,15 +28,24 @@ public class NotificationPublisherService {
     }
 
     public void publishApprovalEvent(String contactEmail, String businessName) {
+        if (!org.springframework.util.StringUtils.hasText(contactEmail)) {
+            System.err.println("Warning: Cannot send approval notification because contactEmail is null/empty for: " + businessName);
+            return;
+        }
         java.util.Map<String, Object> vars = new java.util.HashMap<>();
-        vars.put("businessName", businessName);
+        vars.put("businessName", businessName != null ? businessName : "Partner");
         NotificationEvent event = new NotificationEvent(
                 contactEmail,
-                "Profile Approved!",
+                "Profile Approved - Welcome to Blue Ceylon!",
                 "profile_approved",
                 vars
         );
-        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, "email.routing.key", event);
+        try {
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, "email.routing.key", event);
+            System.out.println("Successfully published approval email event to RabbitMQ for " + contactEmail);
+        } catch (Exception e) {
+            System.err.println("Failed to publish approval notification event: " + e.getMessage());
+        }
     }
 
     public void publishRejectionEvent(String contactEmail, String businessName, String reason) {
@@ -50,6 +59,16 @@ public class NotificationPublisherService {
                 vars
         );
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, "email.routing.key", event);
+    }
+
+    public void publishBusinessApprovedEvent(String ownerId, String businessType) {
+        com.blueceylon.catalog_service.application.dto.BusinessApprovedEvent event =
+                new com.blueceylon.catalog_service.application.dto.BusinessApprovedEvent(ownerId, businessType);
+        try {
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, "business.approved", event);
+        } catch (Exception e) {
+            System.err.println("Warning: Could not publish BusinessApprovedEvent over RabbitMQ: " + e.getMessage());
+        }
     }
 }
 

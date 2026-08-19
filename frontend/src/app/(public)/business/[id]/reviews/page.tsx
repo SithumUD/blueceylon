@@ -1,47 +1,87 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Star, ShieldCheck, Send } from "lucide-react";
+import { ArrowLeft, Star, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MOCK_BUSINESSES } from "@/lib/mock-data/businesses";
-import { MOCK_REVIEWS, Review } from "@/lib/mock-data/reviews";
+import { MOCK_REVIEWS, type Review } from "@/lib/mock-data/reviews";
+import { format } from "date-fns";
+import { getReviews, submitReview } from "@/lib/api/reviews";
 
 export default function BusinessReviewsPage() {
   const params = useParams();
   const businessId = params.id as string;
   const business = MOCK_BUSINESSES.find((b) => b.id === businessId) || MOCK_BUSINESSES[0];
 
-  const [reviewsList, setReviewsList] = useState<Review[]>(
-    MOCK_REVIEWS.filter((r) => r.businessId === business.id)
-  );
+  const [reviewsList, setReviewsList] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const [guestName, setGuestName] = useState("");
-  const [bookingRef, setBookingRef] = useState("");
+  const [reviewerName, setReviewerName] = useState("");
+  const [bookingReference, setBookingReference] = useState("");
   const [comment, setComment] = useState("");
   const [rating, setRating] = useState(5);
 
-  const handleAddReview = (e: React.FormEvent) => {
+  const loadReviews = async () => {
+    setLoading(true);
+    try {
+      const entityType = (business.type || "HOTEL") as any;
+      const res = await getReviews({ entityId: business.id, entityType });
+      setReviewsList(res.content);
+    } catch {
+      setReviewsList(MOCK_REVIEWS.filter((r) => r.entityId === business.id));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadReviews();
+  }, [businessId]);
+
+  const handleAddReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!comment || !guestName) return;
-
-    const newRev: Review = {
-      id: `rev-${Date.now()}`,
-      businessId: business.id,
-      guestName,
-      guestCountry: "Traveler",
-      rating,
-      date: "Today",
-      verifiedStay: Boolean(bookingRef),
-      bookingRef: bookingRef || "Unverified",
-      comment,
-    };
-
-    setReviewsList([newRev, ...reviewsList]);
-    setGuestName("");
-    setBookingRef("");
-    setComment("");
+    if (!comment || !reviewerName) return;
+    setSubmitting(true);
+    try {
+      const entityType = (business.type || "HOTEL") as any;
+      await submitReview({
+        entityId: business.id,
+        entityType,
+        rating,
+        comment,
+        bookingId: bookingReference ? `bk-${bookingReference}` : undefined,
+      });
+      setReviewerName("");
+      setBookingReference("");
+      setComment("");
+      setRating(5);
+      loadReviews();
+    } catch {
+      // Local fallback simulation
+      const newRev: Review = {
+        id: `rev-${Date.now()}`,
+        entityId: business.id,
+        entityType: "HOTEL",
+        reviewerName,
+        reviewerCountry: "Traveler",
+        rating,
+        stayOrTourDate: new Date().toISOString().split("T")[0],
+        verified: Boolean(bookingReference),
+        bookingId: `bk-uuid-${Date.now()}`,
+        bookingReference: bookingReference || undefined,
+        comment,
+      };
+      setReviewsList([newRev, ...reviewsList]);
+      setReviewerName("");
+      setBookingReference("");
+      setComment("");
+      setRating(5);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -75,8 +115,8 @@ export default function BusinessReviewsPage() {
               type="text"
               required
               placeholder="e.g. Sarah Jenkins"
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
+              value={reviewerName}
+              onChange={(e) => setReviewerName(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-[#E4E9EA] dark:border-[#20353D] bg-gray-50 dark:bg-[#15323D] text-xs text-[#0E1B22] dark:text-[#EAF2F4]"
             />
           </div>
@@ -88,8 +128,8 @@ export default function BusinessReviewsPage() {
             <input
               type="text"
               placeholder="BC-2026-XXXX"
-              value={bookingRef}
-              onChange={(e) => setBookingRef(e.target.value)}
+              value={bookingReference}
+              onChange={(e) => setBookingReference(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-[#E4E9EA] dark:border-[#20353D] bg-gray-50 dark:bg-[#15323D] text-xs text-[#0E1B22] dark:text-[#EAF2F4]"
             />
           </div>
@@ -131,8 +171,8 @@ export default function BusinessReviewsPage() {
           />
         </div>
 
-        <Button type="submit" variant="primary" size="sm" className="gap-1.5">
-          <span>Submit Review</span>
+        <Button type="submit" disabled={submitting} variant="primary" size="sm" className="gap-1.5">
+          <span>{submitting ? "Submitting..." : "Submit Review"}</span>
           <Send className="w-3.5 h-3.5" />
         </Button>
       </form>
@@ -147,10 +187,11 @@ export default function BusinessReviewsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-bold text-sm text-[#0E1B22] dark:text-[#EAF2F4]">
-                  {rev.guestName}
+                  {rev.reviewerName}
                 </h4>
                 <span className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
-                  {rev.guestCountry} • Reviewed {rev.date}
+                  {rev.reviewerCountry && `${rev.reviewerCountry} • `}
+                  Reviewed {format(new Date(rev.stayOrTourDate), "MMM d, yyyy")}
                 </span>
               </div>
               <div className="flex items-center gap-1 text-xs font-bold text-[#FDA301]">
@@ -159,9 +200,10 @@ export default function BusinessReviewsPage() {
               </div>
             </div>
 
-            {rev.verifiedStay && (
+            {rev.verified && (
               <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#008080] dark:text-[#3FCFC0] bg-[#008080]/10 px-2 py-0.5 rounded-full">
-                <span>✓ Verified Booking Ref: {rev.bookingRef}</span>
+                <span>✓ Verified Booking</span>
+                {rev.bookingReference && <span className="font-mono">· {rev.bookingReference}</span>}
               </div>
             )}
 

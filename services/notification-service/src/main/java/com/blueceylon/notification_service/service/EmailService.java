@@ -41,8 +41,9 @@ public class EmailService {
             helper.setText(htmlContent, true);
 
             javaMailSender.send(message);
-        } catch (MessagingException e) {
-            System.err.println("Failed to send email to " + event.getToEmail());
+            System.out.println("Email successfully sent to " + event.getToEmail() + " using template: " + event.getTemplateName());
+        } catch (Exception e) {
+            System.err.println("Failed to send email to " + event.getToEmail() + ": " + e.getMessage());
             e.printStackTrace();
         }
     }

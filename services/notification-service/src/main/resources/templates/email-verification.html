@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Verify your Blue Ceylon Account</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+        .container { max-width: 600px; background: #ffffff; margin: 0 auto; padding: 30px; border-radius: 16px; border: 1px solid #e4e9ea; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .header { text-align: center; border-bottom: 2px solid #008080; padding-bottom: 15px; margin-bottom: 20px; }
+        .header h1 { color: #003366; margin: 0; font-size: 24px; }
+        .content { color: #4a5a62; line-height: 1.6; font-size: 15px; }
+        .btn-container { text-align: center; margin: 30px 0; }
+        .btn { background-color: #008080; color: #ffffff !important; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 15px; display: inline-block; }
+        .footer { text-align: center; font-size: 12px; color: #999; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Blue Ceylon</h1>
+        </div>
+        <div class="content">
+            <p>Hello <strong th:text="${userName}">Traveler</strong>,</p>
+            <p>Thank you for creating an account with Blue Ceylon! Please verify your email address by clicking the button below:</p>
+            <div class="btn-container">
+                <a th:href="${verificationUrl}" class="btn">Verify Email Address</a>
+            </div>
+            <p>Or copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; font-size: 13px; color: #008080;" th:text="${verificationUrl}"></p>
+            <p>This verification link will expire in 24 hours.</p>
+        </div>
+        <div class="footer">
+            &copy; 2026 Blue Ceylon Tourism Platform. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>

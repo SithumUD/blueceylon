@@ -47,7 +47,7 @@ public class ReviewService {
 
         // Hotel-related entities require a bookingId
         boolean isHotelEntity = HOTEL_ENTITIES.contains(request.getEntityType());
-        boolean hasBookingId = request.getBookingId() != null && !request.getBookingId().isBlank();
+        boolean hasBookingId = request.getBookingId() != null && !request.getBookingId().trim().isEmpty();
 
         if (isHotelEntity && !hasBookingId) {
             throw new IllegalArgumentException("A valid bookingId is required to review hotel services");

@@ -1,7 +1,11 @@
 package com.blueceylon.catalog_service.application.service;
 
+import com.blueceylon.catalog_service.domain.model.Business;
 import com.blueceylon.catalog_service.domain.model.TourPackage;
+import com.blueceylon.catalog_service.domain.model.enums.OwnerType;
 import com.blueceylon.catalog_service.domain.repository.TourPackageRepository;
+import com.blueceylon.catalog_service.infrastructure.persistence.repository.BusinessRepository;
+import com.blueceylon.catalog_service.infrastructure.persistence.repository.TourGuideProfileRepository;
 import com.blueceylon.catalog_service.presentation.dto.request.TourPackageRequest;
 import com.blueceylon.catalog_service.presentation.dto.response.TourPackageResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,9 +20,28 @@ public class TourPackageService {
     @Autowired
     private TourPackageRepository tourPackageRepository;
 
+    @Autowired
+    private BusinessRepository businessRepository;
+
+    @Autowired
+    private TourGuideProfileRepository guideRepository;
+
     public TourPackageResponse createTourPackage(String ownerId, TourPackageRequest request) {
         TourPackage tour = new TourPackage();
         tour.setOwnerId(ownerId);
+
+        // Determine ownerType automatically based on ownerId
+        OwnerType ownerType = OwnerType.TOUR_AGENCY;
+        if (guideRepository.existsByUserId(ownerId)) {
+            ownerType = OwnerType.TOUR_GUIDE;
+        } else if (businessRepository.existsByOwnerId(ownerId)) {
+            Business b = businessRepository.findByOwnerId(ownerId).orElse(null);
+            if (b != null && b.getType() != null) {
+                ownerType = OwnerType.valueOf(b.getType().name());
+            }
+        }
+        tour.setOwnerType(ownerType);
+
         tour.setTitle(request.getTitle());
         tour.setDescription(request.getDescription());
         tour.setPrice(request.getPrice());
@@ -43,6 +66,12 @@ public class TourPackageService {
         return tourPackageRepository.findByOwnerId(ownerId).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    public TourPackageResponse getTourPackageById(String packageId) {
+        TourPackage tour = tourPackageRepository.findById(packageId)
+                .orElseThrow(() -> new RuntimeException("Tour Package not found"));
+        return mapToResponse(tour);
     }
 
     private TourPackageResponse mapToResponse(TourPackage tour) {

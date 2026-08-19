@@ -39,8 +39,8 @@ public class ReviewController {
      */
     @GetMapping("/api/v1/catalog/public/reviews")
     public ResponseEntity<Page<ReviewResponse>> getReviews(
-            @RequestParam String entityId,
-            @RequestParam ReviewEntityType entityType,
+            @RequestParam("entityId") String entityId,
+            @RequestParam("entityType") ReviewEntityType entityType,
             Pageable pageable) {
         return ResponseEntity.ok(reviewService.getReviews(entityId, entityType, pageable));
     }
@@ -51,7 +51,7 @@ public class ReviewController {
      */
     @PutMapping("/api/v1/catalog/reviews/{reviewId}/respond")
     public ResponseEntity<ReviewResponse> respondToReview(
-            @PathVariable String reviewId,
+            @PathVariable("reviewId") String reviewId,
             @AuthenticationPrincipal Jwt jwt,
             @RequestBody java.util.Map<String, String> body) {
         String ownerId = jwt.getSubject();

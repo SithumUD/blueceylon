@@ -36,20 +36,20 @@ export default function BusinessRoomsPage() {
           >
             <div className="flex items-center gap-4">
               <img
-                src={room.image}
-                alt={room.name}
+                src={room.imageUrls[0]}
+                alt={room.displayName}
                 className="w-24 h-24 rounded-2xl object-cover"
               />
               <div className="space-y-1">
                 <h3 className="font-display font-bold text-lg text-[#0E1B22] dark:text-[#EAF2F4]">
-                  {room.name}
+                  {room.displayName}
                 </h3>
                 <p className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
-                  {room.bedType} • Max {room.capacity} Guests
+                  {room.bedConfiguration} • Max {room.capacity} Guests
                 </p>
                 <div className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                   <Check className="w-3.5 h-3.5" />
-                  <span>Free Cancellation & Pay at Property</span>
+                  <span>Free Cancellation & Cash/Card Accepted</span>
                 </div>
               </div>
             </div>
@@ -59,7 +59,7 @@ export default function BusinessRoomsPage() {
                 <span className="font-sans text-2xl font-bold text-[#003366] dark:text-[#EAF2F4]">
                   ${room.pricePerNight}
                 </span>
-                <span className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]"> / night</span>
+                <span className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]"> {room.currency} / night</span>
               </div>
               <Link href={`/checkout/room?businessId=${business.id}&roomId=${room.id}`}>
                 <Button variant="primary" size="md">

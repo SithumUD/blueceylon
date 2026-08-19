@@ -115,6 +115,41 @@ public class BookingApplicationService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public BookingResponse cancelBooking(String userId, String bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        
+        if (!booking.getUserId().equals(userId)) {
+            throw new RuntimeException("Unauthorized to cancel this booking");
+        }
+
+        if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
+            throw new RuntimeException("Booking cannot be cancelled in state: " + booking.getStatus());
+        }
+
+        availabilityService.releaseHold(booking);
+        booking.setStatus(BookingStatus.CANCELLED);
+        Booking saved = bookingRepository.save(booking);
+        return mapToResponse(saved);
+    }
+
+    @Transactional
+    public BookingResponse updateBookingStatus(String businessId, String bookingId, BookingStatus newStatus) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        if (newStatus == BookingStatus.CANCELLED) {
+            availabilityService.releaseHold(booking);
+        } else if (newStatus == BookingStatus.CONFIRMED && booking.getStatus() == BookingStatus.HELD) {
+            availabilityService.confirmHold(booking);
+        }
+
+        booking.setStatus(newStatus);
+        Booking saved = bookingRepository.save(booking);
+        return mapToResponse(saved);
+    }
+
     private BookingResponse mapToResponse(Booking booking) {
         BookingResponse response = new BookingResponse();
         response.setId(booking.getId());

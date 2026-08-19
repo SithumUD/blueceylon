@@ -1,0 +1,76 @@
+﻿{
+  "Servers": {
+    "1": {
+      "Name": "Blue Ceylon PostgreSQL (All DBs)",
+      "Group": "Blue Ceylon",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "postgres",
+      "Username": "postgres",
+      "Password": "postgres",
+      "SSLMode": "prefer",
+      "SavePassword": true,
+      "Comment": "Main Blue Ceylon Postgres instance (contains all databases)"
+    },
+    "2": {
+      "Name": "auth_db (Auth Service)",
+      "Group": "Blue Ceylon",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "auth_db",
+      "Username": "postgres",
+      "Password": "postgres",
+      "SSLMode": "prefer",
+      "SavePassword": true,
+      "Comment": "User accounts, authentication tokens"
+    },
+    "3": {
+      "Name": "catalog_db (Catalog Service)",
+      "Group": "Blue Ceylon",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "catalog_db",
+      "Username": "postgres",
+      "Password": "postgres",
+      "SSLMode": "prefer",
+      "SavePassword": true,
+      "Comment": "Business listings, rooms, tour packages, reviews, inquiries"
+    },
+    "4": {
+      "Name": "blueceylon_booking (Booking Service)",
+      "Group": "Blue Ceylon",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "blueceylon_booking",
+      "Username": "postgres",
+      "Password": "postgres",
+      "SSLMode": "prefer",
+      "SavePassword": true,
+      "Comment": "Bookings, inquiries, outbox events"
+    },
+    "5": {
+      "Name": "payment_db (Payment Service)",
+      "Group": "Blue Ceylon",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "payment_db",
+      "Username": "postgres",
+      "Password": "postgres",
+      "SSLMode": "prefer",
+      "SavePassword": true,
+      "Comment": "PayHere transactions and payment records"
+    },
+    "6": {
+      "Name": "keycloak_db (Auth / Keycloak)",
+      "Group": "Blue Ceylon",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "keycloak_db",
+      "Username": "postgres",
+      "Password": "postgres",
+      "SSLMode": "prefer",
+      "SavePassword": true,
+      "Comment": "Keycloak identity and access management data"
+    }
+  }
+}

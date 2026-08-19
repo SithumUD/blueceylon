@@ -1,6 +1,7 @@
 package com.blueceylon.booking_service.presentation.controller;
 
 import com.blueceylon.booking_service.application.service.BookingApplicationService;
+import com.blueceylon.booking_service.domain.model.enums.BookingStatus;
 import com.blueceylon.booking_service.presentation.dto.request.BookingRequest;
 import com.blueceylon.booking_service.presentation.dto.response.BookingResponse;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +12,7 @@ import com.blueceylon.booking_service.application.service.IdempotencyService;
 import com.blueceylon.booking_service.domain.model.IdempotencyRecord;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Optional;
-
+import java.util.Map;
 import java.util.List;
 
 @RestController
@@ -48,7 +49,6 @@ public class BookingController {
                 }
             }
         }
-        // sub usually holds the Keycloak User ID
         String userId = jwt.getSubject();
         BookingResponse response = service.createBooking(userId, request);
         if (idempotencyKey != null) {
@@ -67,8 +67,25 @@ public class BookingController {
     public ResponseEntity<List<BookingResponse>> getBusinessBookings(
             @PathVariable String businessId, 
             @AuthenticationPrincipal Jwt jwt) {
-        // Should ideally verify if jwt user is the owner of the businessId
         return ResponseEntity.ok(service.getBusinessBookings(businessId));
     }
-}
 
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<BookingResponse> cancelBooking(
+            @PathVariable String id,
+            @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt.getSubject();
+        return ResponseEntity.ok(service.cancelBooking(userId, id));
+    }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<BookingResponse> updateBookingStatus(
+            @PathVariable String id,
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody Map<String, String> body) {
+        String statusStr = body.get("status");
+        BookingStatus status = BookingStatus.valueOf(statusStr.toUpperCase());
+        String businessId = jwt.getSubject();
+        return ResponseEntity.ok(service.updateBookingStatus(businessId, id, status));
+    }
+}

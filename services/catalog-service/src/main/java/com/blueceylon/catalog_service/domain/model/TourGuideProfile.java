@@ -41,7 +41,7 @@ public class TourGuideProfile extends BaseModel {
     @Column(nullable = false)
     private ApprovalStatus status = ApprovalStatus.DRAFT;
 
-    @Column(length = 1000)
+    @Column(columnDefinition = "TEXT")
     private String rejectionReason;
 
     @Enumerated(EnumType.STRING)
@@ -53,19 +53,22 @@ public class TourGuideProfile extends BaseModel {
 
     private Double latitude;
     private Double longitude;
+
+    @Column(name = "address_line", columnDefinition = "TEXT")
     private String addressLine;
 
     @Column(name = "cover_image_public_id")
     private String coverImagePublicId;
 
-    @Column(name = "cover_image_url")
+    @Column(name = "cover_image_url", columnDefinition = "TEXT")
     private String coverImageUrl;
 
     @ElementCollection
     @CollectionTable(name = "guide_gallery_images", joinColumns = @JoinColumn(name = "guide_id"))
-    @Column(name = "image_url")
+    @Column(name = "image_url", columnDefinition = "TEXT")
     private List<String> galleryImageUrls = new ArrayList<>();
 
+    @Column(name = "video_url", columnDefinition = "TEXT")
     private String videoUrl;
 
     @Enumerated(EnumType.STRING)
@@ -113,6 +116,15 @@ public class TourGuideProfile extends BaseModel {
     @Enumerated(EnumType.STRING)
     @Column(name = "vehicle_type")
     private VehicleType vehicleType;
+
+    @Column(name = "vehicle_model")
+    private String vehicleModel;
+
+    @Column(name = "vehicle_air_conditioned")
+    private Boolean vehicleAirConditioned;
+
+    @Enumerated(EnumType.STRING)
+    private Currency currency = Currency.USD;
 
     @ElementCollection
     @CollectionTable(name = "guide_specialty_areas", joinColumns = @JoinColumn(name = "guide_id"))
@@ -212,6 +224,12 @@ public class TourGuideProfile extends BaseModel {
     public void setYearsOfExperience(Integer yearsOfExperience) { this.yearsOfExperience = yearsOfExperience; }
     public VehicleType getVehicleType() { return vehicleType; }
     public void setVehicleType(VehicleType vehicleType) { this.vehicleType = vehicleType; }
+    public String getVehicleModel() { return vehicleModel; }
+    public void setVehicleModel(String vehicleModel) { this.vehicleModel = vehicleModel; }
+    public Boolean getVehicleAirConditioned() { return vehicleAirConditioned; }
+    public void setVehicleAirConditioned(Boolean vehicleAirConditioned) { this.vehicleAirConditioned = vehicleAirConditioned; }
+    public Currency getCurrency() { return currency; }
+    public void setCurrency(Currency currency) { this.currency = currency; }
     public List<GuideSpecialtyArea> getSpecialtyAreas() { return specialtyAreas; }
     public void setSpecialtyAreas(List<GuideSpecialtyArea> specialtyAreas) { this.specialtyAreas = specialtyAreas; }
     public List<Region> getCoverageRegions() { return coverageRegions; }

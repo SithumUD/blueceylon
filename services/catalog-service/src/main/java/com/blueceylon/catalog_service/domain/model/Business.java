@@ -18,10 +18,10 @@ public abstract class Business extends BaseModel {
 
     private String name;
 
-    @Column(length = 2000)
+    @Column(columnDefinition = "TEXT")
     private String description;
     
-    @Column(length = 100)
+    @Column(columnDefinition = "TEXT")
     private String tagline;
 
     private String contactEmail;
@@ -31,9 +31,10 @@ public abstract class Business extends BaseModel {
     @ElementCollection
     @CollectionTable(name = "business_social_links", joinColumns = @JoinColumn(name = "business_id"))
     @MapKeyColumn(name = "platform")
-    @Column(name = "url")
+    @Column(name = "url", columnDefinition = "TEXT")
     private Map<String, String> socialLinks = new HashMap<>();
 
+    @Column(columnDefinition = "TEXT")
     private String website;
 
     @Column(name = "owner_id", nullable = false)
@@ -47,7 +48,7 @@ public abstract class Business extends BaseModel {
     @Column(nullable = false)
     private ApprovalStatus status = ApprovalStatus.DRAFT;
 
-    @Column(length = 1000)
+    @Column(columnDefinition = "TEXT")
     private String rejectionReason;
 
     @Enumerated(EnumType.STRING)
@@ -59,19 +60,22 @@ public abstract class Business extends BaseModel {
 
     private Double latitude;
     private Double longitude;
+
+    @Column(name = "address_line", columnDefinition = "TEXT")
     private String addressLine;
 
     @Column(name = "cover_image_public_id")
     private String coverImagePublicId;
 
-    @Column(name = "cover_image_url")
+    @Column(name = "cover_image_url", columnDefinition = "TEXT")
     private String coverImageUrl;
     
     @ElementCollection
     @CollectionTable(name = "business_gallery_images", joinColumns = @JoinColumn(name = "business_id"))
-    @Column(name = "image_url")
+    @Column(name = "image_url", columnDefinition = "TEXT")
     private List<String> galleryImageUrls = new ArrayList<>();
     
+    @Column(name = "video_url", columnDefinition = "TEXT")
     private String videoUrl;
     
     @Enumerated(EnumType.STRING)

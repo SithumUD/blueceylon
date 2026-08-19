@@ -45,6 +45,21 @@ public class KeycloakTokenExchangeClient {
                 .block();
     }
 
+    public Map<String, Object> refreshToken(String refreshToken) {
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("client_id", clientId);
+        formData.add("grant_type", "refresh_token");
+        formData.add("refresh_token", refreshToken);
+
+        return webClient.post()
+                .uri(authServerUrl + "/realms/" + realm + "/protocol/openid-connect/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .body(BodyInserters.fromFormData(formData))
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+    }
+
     public Map<String, Object> exchangeSocialToken(String provider, String idToken) {
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("client_id", clientId);

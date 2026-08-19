@@ -44,6 +44,14 @@ public class KeycloakAdminClient {
         UsersResource usersResource = keycloak.realm(realm).users();
         Response response = usersResource.create(user);
 
+        if (response.getStatus() == 409) {
+            List<UserRepresentation> existingUsers = usersResource.searchByEmail(email, true);
+            if (!existingUsers.isEmpty()) {
+                return existingUsers.get(0).getId();
+            }
+            throw new RuntimeException("User with email " + email + " already exists in Keycloak.");
+        }
+
         if (response.getStatus() != 201) {
             throw new RuntimeException("Failed to create user in Keycloak, status: " + response.getStatus());
         }
@@ -58,13 +66,6 @@ public class KeycloakAdminClient {
             System.err.println("Warning: Could not assign role " + role.name() + " in Keycloak: " + e.getMessage());
         }
         
-        // Trigger verification email
-        try {
-            usersResource.get(userId).executeActionsEmail(Collections.singletonList("VERIFY_EMAIL"));
-        } catch (Exception e) {
-            System.err.println("Warning: Failed to send verification email: " + e.getMessage());
-        }
-
         return userId;
     }
 
@@ -81,6 +82,17 @@ public class KeycloakAdminClient {
             userResource.roles().realmLevel().add(Collections.singletonList(roleRep));
         } catch (Exception e) {
             System.err.println("Warning: Keycloak role update failed for sub " + keycloakSub + ": " + e.getMessage());
+        }
+    }
+
+    public void setEmailVerified(String keycloakSub, boolean verified) {
+        try {
+            UserResource userResource = keycloak.realm(realm).users().get(keycloakSub);
+            UserRepresentation user = userResource.toRepresentation();
+            user.setEmailVerified(verified);
+            userResource.update(user);
+        } catch (Exception e) {
+            System.err.println("Warning: Keycloak setEmailVerified failed for sub " + keycloakSub + ": " + e.getMessage());
         }
     }
 

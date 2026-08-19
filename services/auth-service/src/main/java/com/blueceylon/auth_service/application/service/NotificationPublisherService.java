@@ -26,4 +26,18 @@ public class NotificationPublisherService {
         );
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, "email.routing.key", event);
     }
+
+    public void publishVerificationEvent(String email, String firstName, String token) {
+        Map<String, Object> variables = new java.util.HashMap<>();
+        variables.put("userName", firstName != null ? firstName : "User");
+        variables.put("verificationUrl", "http://localhost:3000/verify-email?token=" + token);
+        
+        NotificationEvent event = new NotificationEvent(
+                email,
+                "Verify your Blue Ceylon account",
+                "email-verification",
+                variables
+        );
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, "email.routing.key", event);
+    }
 }

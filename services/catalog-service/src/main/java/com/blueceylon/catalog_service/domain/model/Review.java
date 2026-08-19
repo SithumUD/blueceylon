@@ -37,14 +37,27 @@ public class Review extends BaseModel {
     // The bookingId used to verify the review (for hotel-related)
     private String bookingId;
 
+    @Column(name = "reviewer_country")
+    private String reviewerCountry;
+
+    @Column(name = "booking_reference")
+    private String bookingReference;
+
     @Column(length = 2000)
     private String providerResponse;
+
+    @Column(name = "provider_response_at")
+    private java.time.Instant providerResponseAt;
 
     // Getters and Setters
     public String getReviewerUserId() { return reviewerUserId; }
     public void setReviewerUserId(String reviewerUserId) { this.reviewerUserId = reviewerUserId; }
     public String getReviewerName() { return reviewerName; }
     public void setReviewerName(String reviewerName) { this.reviewerName = reviewerName; }
+    public String getReviewerCountry() { return reviewerCountry; }
+    public void setReviewerCountry(String reviewerCountry) { this.reviewerCountry = reviewerCountry; }
+    public String getBookingReference() { return bookingReference; }
+    public void setBookingReference(String bookingReference) { this.bookingReference = bookingReference; }
     public Integer getRating() { return rating; }
     public void setRating(Integer rating) { this.rating = rating; }
     public String getComment() { return comment; }
@@ -61,4 +74,6 @@ public class Review extends BaseModel {
     public void setBookingId(String bookingId) { this.bookingId = bookingId; }
     public String getProviderResponse() { return providerResponse; }
     public void setProviderResponse(String providerResponse) { this.providerResponse = providerResponse; }
+    public java.time.Instant getProviderResponseAt() { return providerResponseAt; }
+    public void setProviderResponseAt(java.time.Instant providerResponseAt) { this.providerResponseAt = providerResponseAt; }
 }

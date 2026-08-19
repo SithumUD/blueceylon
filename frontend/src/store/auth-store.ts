@@ -14,6 +14,7 @@ import {
 interface AuthState {
   user: User | null;
   accessToken: string | null;
+  refreshToken: string | null;
   isLoading: boolean;
   error: string | null;
 
@@ -21,6 +22,8 @@ interface AuthState {
   login: (req: LoginRequest) => Promise<void>;
   register: (req: RegisterRequest) => Promise<void>;
   logout: () => void;
+  setTokens: (accessToken: string, refreshToken?: string | null) => void;
+  updateUser: (user: User) => void;
   clearError: () => void;
   setLoading: (v: boolean) => void;
 }
@@ -30,6 +33,7 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       accessToken: null,
+      refreshToken: null,
       isLoading: false,
       error: null,
 
@@ -40,6 +44,7 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: response.user,
             accessToken: response.accessToken,
+            refreshToken: response.refreshToken || null,
             isLoading: false,
             error: null,
           });
@@ -59,6 +64,7 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: response.user,
             accessToken: response.accessToken,
+            refreshToken: response.refreshToken || null,
             isLoading: false,
             error: null,
           });
@@ -73,7 +79,18 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         logoutService();
-        set({ user: null, accessToken: null, error: null });
+        set({ user: null, accessToken: null, refreshToken: null, error: null });
+      },
+
+      setTokens: (accessToken, refreshToken) => {
+        set((state) => ({
+          accessToken,
+          refreshToken: refreshToken !== undefined ? refreshToken : state.refreshToken,
+        }));
+      },
+
+      updateUser: (updatedUser) => {
+        set({ user: updatedUser });
       },
 
       clearError: () => set({ error: null }),
@@ -82,10 +99,10 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "bc-auth-storage", // localStorage key
       storage: createJSONStorage(() => localStorage),
-      // Only persist the user + token, not transient loading/error state
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
       }),
     }
   )

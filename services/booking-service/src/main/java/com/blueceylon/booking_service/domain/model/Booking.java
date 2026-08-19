@@ -66,10 +66,15 @@ public class Booking extends BaseModel {
     @Column(name = "payment_method", nullable = false)
     private PaymentMethod paymentMethod;
 
+    @Column(name = "booking_reference")
+    private String bookingReference;
+
     @Column(name = "hold_expires_at")
     private Instant holdExpiresAt;
 
     // Getters and Setters
+    public String getBookingReference() { return bookingReference; }
+    public void setBookingReference(String bookingReference) { this.bookingReference = bookingReference; }
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }
     public String getBusinessId() { return businessId; }

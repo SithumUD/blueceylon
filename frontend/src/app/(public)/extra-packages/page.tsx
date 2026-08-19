@@ -1,35 +1,55 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Sun, Moon, Clock, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MOCK_BUSINESSES } from "@/lib/mock-data/businesses";
+import { MOCK_BUSINESSES, CITY_LABELS } from "@/lib/mock-data/businesses";
+import { searchBusinesses } from "@/lib/api/catalog";
 
 export default function ExtraPackagesPage() {
   const [packageType, setPackageType] = useState<"ALL" | "DAYOUT" | "NIGHTOUT">("ALL");
+  const [businesses, setBusinesses] = useState<any[]>([]);
 
-  // Collect Day Out & Night Out packages
-  const dayOutList = MOCK_BUSINESSES.flatMap((b) =>
-    (b.dayOutPackages || []).map((pkg) => ({
+  useEffect(() => {
+    let isMounted = true;
+    async function loadBusinesses() {
+      try {
+        const res = await searchBusinesses({ type: "HOTEL", size: 50 });
+        if (isMounted && res?.content && res.content.length > 0) {
+          setBusinesses(res.content);
+          return;
+        }
+      } catch {
+        // Fallback to local dataset
+      }
+      if (isMounted) {
+        setBusinesses(MOCK_BUSINESSES);
+      }
+    }
+    loadBusinesses();
+  }, []);
+
+  const dayOutList = businesses.flatMap((b) =>
+    (b.dayOutPackages || []).map((pkg: any) => ({
       ...pkg,
       type: "DAYOUT" as const,
       hotelName: b.name,
       hotelId: b.id,
-      city: b.location.city,
-      sltdaVerified: b.sltdaVerified,
+      city: CITY_LABELS[b.city] ?? b.city,
+      sltdaVerified: b.verificationStatus === "VERIFIED",
     }))
   );
 
-  const nightOutList = MOCK_BUSINESSES.flatMap((b) =>
-    (b.nightOutPackages || []).map((pkg) => ({
+  const nightOutList = businesses.flatMap((b) =>
+    (b.nightOutPackages || []).map((pkg: any) => ({
       ...pkg,
       type: "NIGHTOUT" as const,
       hotelName: b.name,
       hotelId: b.id,
-      city: b.location.city,
-      sltdaVerified: b.sltdaVerified,
+      city: CITY_LABELS[b.city] ?? b.city,
+      sltdaVerified: b.verificationStatus === "VERIFIED",
     }))
   );
 
@@ -89,7 +109,7 @@ export default function ExtraPackagesPage() {
             <div className="space-y-4">
               <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800">
                 <img
-                  src={pkg.image}
+                  src={pkg.imageUrls[0]}
                   alt={pkg.title}
                   className="w-full h-full object-cover"
                 />
@@ -109,7 +129,8 @@ export default function ExtraPackagesPage() {
                       <Moon className="w-3.5 h-3.5 text-[#5CE1E6]" />
                       <span>Evening ({pkg.startTime} – {pkg.endTime})</span>
                     </>
-                  )}
+                  )
+                  }
                 </div>
               </div>
 
@@ -129,9 +150,9 @@ export default function ExtraPackagesPage() {
               <div className="space-y-1 pt-2 border-t border-[#E4E9EA] dark:border-[#20353D]">
                 <span className="text-[10px] uppercase font-bold text-gray-400">Package Inclusions</span>
                 <div className="flex flex-wrap gap-1.5">
-                  {pkg.inclusions.map((inc, idx) => (
-                    <span key={idx} className="text-[11px] bg-gray-100 dark:bg-[#15323D] px-2.5 py-0.5 rounded-full font-medium text-[#0E1B22] dark:text-[#EAF2F4]">
-                      ✓ {inc}
+                  {pkg.inclusions.map((inc: any) => (
+                    <span key={inc.id} className="text-[11px] bg-gray-100 dark:bg-[#15323D] px-2.5 py-0.5 rounded-full font-medium text-[#0E1B22] dark:text-[#EAF2F4]">
+                      ✓ {inc.name}
                     </span>
                   ))}
                 </div>
@@ -144,7 +165,8 @@ export default function ExtraPackagesPage() {
                 <span className="font-sans text-2xl font-bold text-[#003366] dark:text-[#3FCFC0]">
                   ${pkg.price}
                 </span>
-                <span className="text-xs text-gray-400"> USD</span>
+                <span className="text-xs text-gray-400"> {pkg.currency}</span>
+                <span className="text-[10px] text-gray-400 block">{pkg.pricingUnit.replace("_", " ")}</span>
               </div>
               <Link href={`/extra-packages/${pkg.id}`}>
                 <Button variant={pkg.type === "DAYOUT" ? "gold" : "secondary"} size="md" className="gap-1.5 rounded-xl font-bold">

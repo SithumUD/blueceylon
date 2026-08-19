@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -38,6 +38,14 @@ interface LoginForm { email: string; password: string; otp: string; }
 interface LoginErrors { email?: string; password?: string; general?: string; }
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[#F4F6F8] dark:bg-[#081419] text-sm text-[#4A5A62]">Loading...</div>}>
+      <LoginFormContent />
+    </Suspense>
+  );
+}
+
+function LoginFormContent() {
   const router = useRouter();
   const [form, setForm] = useState<LoginForm>({ email: "", password: "", otp: "" });
   const [errors, setErrors] = useState<LoginErrors>({});

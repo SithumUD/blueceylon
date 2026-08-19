@@ -13,4 +13,11 @@ public interface TourGuideProfileRepository extends JpaRepository<TourGuideProfi
     Optional<TourGuideProfile> findByUserId(String userId);
     boolean existsByUserId(String userId);
     List<TourGuideProfile> findByStatus(ApprovalStatus status);
+
+    @org.springframework.data.jpa.repository.Query("SELECT g FROM TourGuideProfile g WHERE " +
+           "(:city IS NULL OR g.city = :city) AND " +
+           "g.status = 'APPROVED'")
+    org.springframework.data.domain.Page<TourGuideProfile> searchGuides(
+            @org.springframework.data.repository.query.Param("city") com.blueceylon.catalog_service.domain.model.enums.SriLankanCity city,
+            org.springframework.data.domain.Pageable pageable);
 }

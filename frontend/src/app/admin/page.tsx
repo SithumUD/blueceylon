@@ -68,9 +68,9 @@ export default function AdminDashboardPage() {
             </thead>
             <tbody className="divide-y divide-[#E4E9EA] dark:divide-[#20353D]">
               {[
-                { name: "Ocean Breeze Resort", type: "Hotel", date: "2 hours ago", license: "SLTDA/H/2026/012", highlight: true },
-                { name: "Lanka Wildlife Treks", type: "Tour Agency", date: "5 hours ago", license: "SLTDA/TA/2026/044", highlight: false },
-                { name: "Nimal Fernando", type: "Tour Guide", date: "1 day ago", license: "N-1052", highlight: false },
+                { name: "Ocean Breeze Resort", type: "Hotel", date: "2 hours ago", licenseNumber: "SLTDA/H/2026/012", highlight: true },
+                { name: "Lanka Wildlife Treks", type: "Tour Agency", date: "5 hours ago", licenseNumber: "SLTDA/TA/2026/044", highlight: false },
+                { name: "Nimal Fernando", type: "Tour Guide", date: "1 day ago", licenseNumber: "N-1052", highlight: false },
               ].map((req, i) => (
                 <tr key={i} className={`hover:bg-gray-50 dark:hover:bg-[#15323D]/50 transition-colors ${req.highlight ? "bg-orange-50/50 dark:bg-orange-900/10" : ""}`}>
                   <td className="px-6 py-4 font-bold text-[#0E1B22] dark:text-[#EAF2F4]">
@@ -82,7 +82,7 @@ export default function AdminDashboardPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-[#4A5A62] dark:text-[#A9BCC2] font-medium">{req.date}</td>
-                  <td className="px-6 py-4 font-mono text-xs text-[#0E1B22] dark:text-[#EAF2F4]">{req.license}</td>
+                  <td className="px-6 py-4 font-mono text-xs text-[#0E1B22] dark:text-[#EAF2F4]">{req.licenseNumber}</td>
                   <td className="px-6 py-4 text-right space-x-2">
                     <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-[#1F9D6C] hover:bg-[#1F9D6C]/10 rounded-lg">
                       <CheckCircle2 className="w-4 h-4" />

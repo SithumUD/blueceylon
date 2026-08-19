@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.blueceylon.catalog_service.infrastructure.cloudinary.CloudinaryService;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -23,11 +24,18 @@ public class BusinessProfileService {
     private final BusinessRepository businessRepository;
     private final NotificationPublisherService notificationPublisherService;
     private final TourGuideProfileRepository guideRepository;
+    private final CloudinaryService cloudinaryService;
 
-    public BusinessProfileService(BusinessRepository businessRepository, TourGuideProfileRepository guideRepository, NotificationPublisherService notificationPublisherService) {
+    public BusinessProfileService(
+            BusinessRepository businessRepository,
+            TourGuideProfileRepository guideRepository,
+            NotificationPublisherService notificationPublisherService,
+            CloudinaryService cloudinaryService
+    ) {
         this.notificationPublisherService = notificationPublisherService;
         this.businessRepository = businessRepository;
         this.guideRepository = guideRepository;
+        this.cloudinaryService = cloudinaryService;
     }
 
     public Object getMyProfile(String ownerId) {
@@ -43,6 +51,15 @@ public class BusinessProfileService {
         mapSharedFields(hotel, request);
         if (request.getStarRating() != null) hotel.setStarRating(request.getStarRating());
         if (request.getTotalBranches() != null) hotel.setTotalBranches(request.getTotalBranches());
+        if (request.getPropertyType() != null) hotel.setPropertyType(request.getPropertyType());
+        if (request.getCheckInTime() != null) hotel.setCheckInTime(request.getCheckInTime());
+        if (request.getCheckOutTime() != null) hotel.setCheckOutTime(request.getCheckOutTime());
+        if (request.getPetPolicy() != null) hotel.setPetPolicy(request.getPetPolicy());
+        if (request.getTotalRooms() != null) hotel.setTotalRooms(request.getTotalRooms());
+        if (request.getOffersDayOutPackages() != null) hotel.setOffersDayOutPackages(request.getOffersDayOutPackages());
+        if (request.getOffersNightOutPackages() != null) hotel.setOffersNightOutPackages(request.getOffersNightOutPackages());
+        if (request.getOffersHourlyBooking() != null) hotel.setOffersHourlyBooking(request.getOffersHourlyBooking());
+        if (StringUtils.hasText(request.getSltdaLicenseNumber())) hotel.setSltdaLicenseNumber(request.getSltdaLicenseNumber());
         return businessRepository.save(hotel);
     }
 
@@ -52,6 +69,9 @@ public class BusinessProfileService {
         mapSharedFields(agency, request);
         if (StringUtils.hasText(request.getLicenseNumber())) agency.setLicenseNumber(request.getLicenseNumber());
         if (request.getYearsInOperation() != null) agency.setYearsInBusiness(request.getYearsInOperation());
+        if (request.getPartnerNetworkSize() != null) agency.setPartnerNetworkSize(request.getPartnerNetworkSize());
+        if (request.getSpecializations() != null) agency.setSpecializations(new ArrayList<>(request.getSpecializations()));
+        if (request.getFleetTypes() != null) agency.setFleetTypes(new ArrayList<>(request.getFleetTypes()));
         return businessRepository.save(agency);
     }
 
@@ -67,12 +87,25 @@ public class BusinessProfileService {
 
         if (StringUtils.hasText(request.getName())) guide.setName(request.getName());
         if (StringUtils.hasText(request.getDescription())) guide.setDescription(request.getDescription());
+        if (StringUtils.hasText(request.getTagline())) guide.setTagline(request.getTagline());
+        if (StringUtils.hasText(request.getContactEmail())) guide.setContactEmail(request.getContactEmail());
+        if (StringUtils.hasText(request.getContactPhone())) guide.setContactPhone(request.getContactPhone());
+        if (StringUtils.hasText(request.getWhatsappNumber())) guide.setWhatsappNumber(request.getWhatsappNumber());
+        if (request.getCity() != null) guide.setCity(request.getCity());
+        if (request.getRegion() != null) guide.setRegion(request.getRegion());
         if (StringUtils.hasText(request.getCoverImageUrl())) guide.setCoverImageUrl(request.getCoverImageUrl());
         if (StringUtils.hasText(request.getLicenseNumber())) guide.setSltdaLicenseNumber(request.getLicenseNumber());
+        if (StringUtils.hasText(request.getLicenseType())) guide.setLicenseType(request.getLicenseType());
         if (request.getLanguagesSpoken() != null) guide.setLanguagesSpoken(new ArrayList<>(request.getLanguagesSpoken()));
         if (request.getYearsOfExperience() != null) guide.setYearsOfExperience(request.getYearsOfExperience());
         if (request.getVehicleType() != null) guide.setVehicleType(request.getVehicleType());
-        
+        if (StringUtils.hasText(request.getVehicleModel())) guide.setVehicleModel(request.getVehicleModel());
+        if (request.getVehicleAirConditioned() != null) guide.setVehicleAirConditioned(request.getVehicleAirConditioned());
+        if (request.getCurrency() != null) guide.setCurrency(request.getCurrency());
+        if (request.getMaxGroupSizeGuided() != null) guide.setMaxGroupSizeGuided(request.getMaxGroupSizeGuided());
+        if (request.getDailyRate() != null) guide.setDailyRate(request.getDailyRate());
+        if (request.getHalfDayRate() != null) guide.setHalfDayRate(request.getHalfDayRate());
+
         return guideRepository.save(guide);
     }
 
@@ -103,13 +136,24 @@ public class BusinessProfileService {
         if (guideRepository.existsById(profileId)) {
             TourGuideProfile guide = guideRepository.findById(profileId).get();
             guide.setStatus(ApprovalStatus.APPROVED);
-            return guideRepository.save(guide);
+            guide.setVerificationStatus(com.blueceylon.catalog_service.domain.model.enums.VerificationStatus.VERIFIED);
+            TourGuideProfile saved = guideRepository.save(guide);
+
+            notificationPublisherService.publishApprovalEvent(saved.getContactEmail(), saved.getName());
+            notificationPublisherService.publishBusinessApprovedEvent(saved.getUserId(), "TOUR_GUIDE");
+            return saved;
         }
+
         Business business = businessRepository.findById(profileId)
                 .orElseThrow(() -> new IllegalArgumentException("Profile not found"));
         business.setStatus(ApprovalStatus.APPROVED);
+        business.setVerificationStatus(com.blueceylon.catalog_service.domain.model.enums.VerificationStatus.VERIFIED);
         business.setRejectionReason(null);
-        return businessRepository.save(business);
+        Business saved = businessRepository.save(business);
+
+        notificationPublisherService.publishApprovalEvent(saved.getContactEmail(), saved.getName());
+        notificationPublisherService.publishBusinessApprovedEvent(saved.getOwnerId(), saved.getType() != null ? saved.getType().name() : "HOTEL");
+        return saved;
     }
 
     public Object rejectProfile(String profileId, String reason) {
@@ -176,14 +220,50 @@ public class BusinessProfileService {
     private void mapSharedFields(Business business, BaseBusinessDraftRequest request) {
         if (StringUtils.hasText(request.getName())) business.setName(request.getName());
         if (StringUtils.hasText(request.getDescription())) business.setDescription(request.getDescription());
+        if (StringUtils.hasText(request.getTagline())) business.setTagline(request.getTagline());
         if (StringUtils.hasText(request.getContactEmail())) business.setContactEmail(request.getContactEmail());
         if (StringUtils.hasText(request.getContactPhone())) business.setContactPhone(request.getContactPhone());
+        if (StringUtils.hasText(request.getWhatsappNumber())) business.setWhatsappNumber(request.getWhatsappNumber());
+        if (StringUtils.hasText(request.getWebsite())) business.setWebsite(request.getWebsite());
+        if (request.getSocialLinks() != null) business.setSocialLinks(request.getSocialLinks());
         if (request.getCity() != null) business.setCity(request.getCity());
+        if (request.getRegion() != null) business.setRegion(request.getRegion());
         if (StringUtils.hasText(request.getAddressLine())) business.setAddressLine(request.getAddressLine());
         if (request.getLatitude() != null) business.setLatitude(request.getLatitude());
         if (request.getLongitude() != null) business.setLongitude(request.getLongitude());
         if (StringUtils.hasText(request.getCoverImagePublicId())) business.setCoverImagePublicId(request.getCoverImagePublicId());
-        if (StringUtils.hasText(request.getCoverImageUrl())) business.setCoverImageUrl(request.getCoverImageUrl());
+        
+        if (StringUtils.hasText(request.getCoverImageUrl())) {
+            String coverUrl = request.getCoverImageUrl();
+            if (coverUrl.startsWith("data:") && cloudinaryService != null) {
+                try {
+                    coverUrl = cloudinaryService.uploadBase64(coverUrl, "covers");
+                } catch (Exception e) {
+                    // Fallback to raw string
+                }
+            }
+            business.setCoverImageUrl(coverUrl);
+        }
+
+        if (StringUtils.hasText(request.getVideoUrl())) {
+            String videoUrl = request.getVideoUrl();
+            if (videoUrl.startsWith("data:") && cloudinaryService != null) {
+                try {
+                    videoUrl = cloudinaryService.uploadBase64(videoUrl, "videos");
+                } catch (Exception e) {
+                    // Fallback to raw string
+                }
+            }
+            business.setVideoUrl(videoUrl);
+        }
+
+        if (request.getGalleryImageUrls() != null) business.setGalleryImageUrls(request.getGalleryImageUrls());
+        if (request.getYearsInBusiness() != null) business.setYearsInBusiness(request.getYearsInBusiness());
+        if (request.getSustainabilityBadges() != null) business.setSustainabilityBadges(new ArrayList<>(request.getSustainabilityBadges()));
+        if (request.getCancellationPolicy() != null) business.setCancellationPolicy(request.getCancellationPolicy());
+        if (request.getPaymentMethods() != null) business.setPaymentMethods(new ArrayList<>(request.getPaymentMethods()));
+        if (request.getDepositRequired() != null) business.setDepositRequired(request.getDepositRequired());
+        if (request.getDepositPercentage() != null) business.setDepositPercentage(request.getDepositPercentage());
     }
 
     public void deleteMyBusiness(String ownerId) {
