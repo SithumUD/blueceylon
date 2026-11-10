@@ -95,6 +95,14 @@ export interface Room {
   bedConfiguration: string;      // e.g. "1 King Bed"
   smokingAllowed: boolean;
   isHourlyBookable: boolean;
+  hotelId?: string;
+  hotelName?: string;
+  hotelCity?: string;
+  hotelCoverImage?: string;
+  hotelRating?: number;
+  hotelAddress?: string;
+  sltdaVerified?: boolean;
+  city?: SriLankanCity | string;
 }
 
 export interface ItineraryDay {
@@ -133,6 +141,12 @@ export interface TourPackage {
   mealsIncluded: MealPlan;
   accommodationIncluded: boolean;
   isPrivateTour: boolean;
+  providerId?: string;
+  providerType?: "HOTEL" | "TOUR_AGENCY" | "TOUR_GUIDE" | string;
+  providerName?: string;
+  sltdaVerified?: boolean;
+  location?: string;
+  coverImageUrl?: string;
 }
 
 export interface DayOutPackage {
@@ -149,6 +163,11 @@ export interface DayOutPackage {
   availableDays: string[];        // e.g. ["MONDAY","TUESDAY"]
   imageUrls: string[];
   advanceBookingHoursRequired: number;
+  hotelId?: string;
+  hotelName?: string;
+  hotelCity?: SriLankanCity | string;
+  hotelCoverImage?: string;
+  sltdaVerified?: boolean;
 }
 
 export interface NightOutPackage {
@@ -166,6 +185,11 @@ export interface NightOutPackage {
   availableDays: string[];
   imageUrls: string[];
   advanceBookingHoursRequired: number;
+  hotelId?: string;
+  hotelName?: string;
+  hotelCity?: SriLankanCity | string;
+  hotelCoverImage?: string;
+  sltdaVerified?: boolean;
 }
 
 // Host info — derived from auth-service User profile
@@ -225,8 +249,22 @@ export interface Business {
   offersDayOutPackages?: boolean;
   offersNightOutPackages?: boolean;
   offersHourlyBooking?: boolean;
+  // Guide-specific fields
+  licenseNumber?: string;
+  licenseType?: string;
+  languagesSpoken?: string[];
+  yearsOfExperience?: number;
+  vehicleType?: VehicleType;
+  vehicleModel?: string;
+  vehicleAirConditioned?: boolean;
+  currency?: Currency;
+  specialtyAreas?: string[];
+  dailyRate?: number;
+  halfDayRate?: number;
+  maxGroupSizeGuided?: number;
+  avatarUrl?: string;
   // Host profile (derived from auth-service)
-  host: HostInfo;
+  host?: HostInfo;
 }
 
 // ─── Mock Data ────────────────────────────────────────────────

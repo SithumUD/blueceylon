@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
 import { getMyBookings } from "@/lib/api/booking";
-import { DashboardBooking, MOCK_DASHBOARD_BOOKINGS, BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS } from "@/lib/mock-data/bookings";
+import { DashboardBooking, BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS } from "@/lib/mock-data/bookings";
 
 export default function MyBookingsPage() {
   const user = useAuthStore((s) => s.user);
@@ -25,9 +25,9 @@ export default function MyBookingsPage() {
       }
       try {
         const res = await getMyBookings();
-        setBookings(res && res.length > 0 ? res : MOCK_DASHBOARD_BOOKINGS);
+        setBookings(res || []);
       } catch {
-        setBookings(MOCK_DASHBOARD_BOOKINGS);
+        setBookings([]);
       } finally {
         setLoading(false);
       }
@@ -69,9 +69,9 @@ export default function MyBookingsPage() {
             Track and manage all your active, confirmed, and completed travel reservations across Sri Lanka. Click any booking to view full details and hotel contact info.
           </p>
         </div>
-        <Link href="/hotels">
+        <Link href="/rooms">
           <Button variant="gold" className="font-bold gap-2 rounded-xl">
-            <span>Explore Hotels & Tours</span>
+            <span>Explore Stays & Tours</span>
             <ArrowRight className="w-4 h-4" />
           </Button>
         </Link>

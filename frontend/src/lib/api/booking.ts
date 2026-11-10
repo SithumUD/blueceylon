@@ -45,3 +45,31 @@ export async function updateBookingStatus(id: string, status: BookingStatus): Pr
     body: JSON.stringify({ status }),
   });
 }
+
+export interface AvailabilityCheckResponse {
+  available: boolean;
+  availableUnits: number;
+  message: string;
+  pricePerNight?: number;
+  totalNights?: number;
+  totalPrice?: number;
+}
+
+export async function checkRoomAvailability(params: {
+  roomId: string;
+  checkIn: string;
+  checkOut: string;
+  quantity?: number;
+  guestCount?: number;
+}): Promise<AvailabilityCheckResponse> {
+  return apiFetch<AvailabilityCheckResponse>(`/api/v1/bookings/public/availability/rooms/${params.roomId}`, {
+    method: "GET",
+    params: {
+      checkIn: params.checkIn,
+      checkOut: params.checkOut,
+      quantity: params.quantity || 1,
+      guestCount: params.guestCount || 1,
+    },
+  });
+}
+

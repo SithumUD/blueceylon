@@ -10,11 +10,15 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MOCK_BUSINESSES, CITY_LABELS, REGION_LABELS, type SustainabilityBadge } from "@/lib/mock-data/businesses";
-import { getBusinessById, getBusinessFaqs } from "@/lib/api/catalog";
+import { CITY_LABELS, REGION_LABELS, type SustainabilityBadge } from "@/lib/mock-data/businesses";
+import { 
+  getBusinessById, getBusinessFaqs, getRoomsByHotelId, 
+  getHotelDayOutPackages, getHotelNightOutPackages, getBusinessTours 
+} from "@/lib/api/catalog";
 import { createInquiry } from "@/lib/api/inquiries";
+import { getReviews } from "@/lib/api/reviews";
 import { MapView } from "@/components/common/map-view";
-import { MOCK_REVIEWS } from "@/lib/mock-data/reviews";
+import type { Review } from "@/lib/mock-data/reviews";
 import { format } from "date-fns";
 
 const SUSTAINABILITY_LABELS: Record<SustainabilityBadge, string> = {
@@ -36,6 +40,8 @@ export default function BusinessProfilePage() {
   const businessId = params.id as string;
 
   const [business, setBusiness] = React.useState<any>(null);
+  const [reviews, setReviews] = React.useState<Review[]>([]);
+  const [faqs, setFaqs] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -44,28 +50,47 @@ export default function BusinessProfilePage() {
       if (!businessId) return;
       setLoading(true);
       try {
-        const res = await getBusinessById(businessId);
-        if (isMounted && res && res.id) {
+        const [res, rooms, dayPkgs, nightPkgs, tours, revRes, faqRes] = await Promise.all([
+          getBusinessById(businessId).catch(() => null),
+          getRoomsByHotelId(businessId).catch(() => []),
+          getHotelDayOutPackages(businessId).catch(() => []),
+          getHotelNightOutPackages(businessId).catch(() => []),
+          getBusinessTours(businessId).catch(() => []),
+          getReviews({ entityId: businessId, entityType: "HOTEL" }).catch(() => null),
+          getBusinessFaqs(businessId).catch(() => []),
+        ]);
+
+        if (res && isMounted) {
           setBusiness({
             ...res,
             sustainabilityBadges: res.sustainabilityBadges || [],
             paymentMethods: res.paymentMethods || ["PAYHERE", "CASH"],
             amenities: res.amenities || [],
-            rooms: res.rooms || [],
+            rooms: Array.isArray(rooms) && rooms.length > 0 ? rooms : (res.rooms || []),
+            dayOutPackages: Array.isArray(dayPkgs) && dayPkgs.length > 0 ? dayPkgs : (res.dayOutPackages || []),
+            nightOutPackages: Array.isArray(nightPkgs) && nightPkgs.length > 0 ? nightPkgs : (res.nightOutPackages || []),
+            tourPackages: Array.isArray(tours) && tours.length > 0 ? tours : (res.tourPackages || []),
             galleryImageUrls: res.galleryImageUrls?.length ? res.galleryImageUrls : [res.coverImageUrl],
             host: res.host || { displayName: "Sri Lankan Host", avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb", isSuperhost: true, joinedYear: 2022 },
           });
-          setLoading(false);
-          return;
+
+          if (revRes && revRes.content && isMounted) {
+            setReviews(revRes.content);
+          }
+          if (Array.isArray(faqRes) && isMounted) {
+            setFaqs(faqRes);
+          }
+        } else if (isMounted) {
+          setBusiness(null);
         }
       } catch {
-        // Fallback to local mock data lookup
-      }
-
-      const mock = MOCK_BUSINESSES.find((b) => b.id === businessId) || MOCK_BUSINESSES[0];
-      if (isMounted) {
-        setBusiness(mock);
-        setLoading(false);
+        if (isMounted) {
+          setBusiness(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
     loadBusiness();
@@ -124,10 +149,6 @@ export default function BusinessProfilePage() {
     );
   }
 
-  // Filter reviews by entityId matching business (HOTEL type)
-  const reviews = MOCK_REVIEWS.filter(
-    (r) => r.entityId === business.id && r.entityType === "HOTEL"
-  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
@@ -432,238 +453,266 @@ export default function BusinessProfilePage() {
             {/* TAB CONTENT: ROOMS */}
             {activeTab === "rooms" && (
               <div className="space-y-4">
-                {business.rooms.map((room: any) => (
-                  <div
-                    key={room.id}
-                    className="p-5 rounded-2xl border border-[#E4E9EA] dark:border-[#20353D] bg-white dark:bg-[#0F252E] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm"
-                  >
-                    <div className="flex items-center gap-4 w-full sm:w-auto">
-                      <img
-                        src={room.imageUrls[0]}
-                        alt={room.displayName}
-                        className="w-20 h-20 rounded-xl object-cover"
-                      />
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#003366]/10 text-[#003366] dark:text-[#3FCFC0]">
-                            {room.roomType}
-                          </span>
-                          {room.viewType !== "NO_VIEW" && (
-                            <span className="text-[10px] font-semibold text-[#008080] dark:text-[#3FCFC0]">
-                              {room.viewType.replace("_", " ")}
+                {business.rooms && business.rooms.length > 0 ? (
+                  business.rooms.map((room: any) => (
+                    <div
+                      key={room.id}
+                      className="p-5 rounded-2xl border border-[#E4E9EA] dark:border-[#20353D] bg-white dark:bg-[#0F252E] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm hover:shadow-md transition-all"
+                    >
+                      <div className="flex items-center gap-4 w-full sm:w-auto">
+                        <img
+                          src={(room.imageUrls && room.imageUrls.length > 0 ? room.imageUrls[0] : business.coverImageUrl) || "https://images.unsplash.com/photo-1590490360182-c33d57733427"}
+                          alt={room.displayName || "Room"}
+                          className="w-24 h-24 rounded-xl object-cover"
+                        />
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#003366]/10 text-[#003366] dark:text-[#3FCFC0]">
+                              {(room.roomType || "STANDARD").replace(/_/g, " ")}
                             </span>
-                          )}
+                            {room.viewType && room.viewType !== "NONE" && room.viewType !== "NO_VIEW" && (
+                              <span className="text-[10px] font-semibold text-[#008080] dark:text-[#3FCFC0]">
+                                {room.viewType.replace(/_/g, " ")}
+                              </span>
+                            )}
+                          </div>
+                          <h4 className="font-display font-bold text-base text-[#0E1B22] dark:text-[#EAF2F4]">
+                            {room.displayName || (room.roomType ? `${room.roomType.replace(/_/g, " ")} Room` : "Room")}
+                          </h4>
+                          <p className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
+                            {room.bedConfiguration || (room.bedCount ? `${room.bedCount} Bed(s)` : "Queen Bed")} • Max {room.capacity || 2} Guests
+                            {room.sizeSquareMeters && ` • ${room.sizeSquareMeters} m²`}
+                          </p>
+                          <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            ✓ Instant Confirmation & SLTDA Verified
+                          </span>
                         </div>
-                        <h4 className="font-display font-bold text-base text-[#0E1B22] dark:text-[#EAF2F4]">
-                          {room.displayName}
-                        </h4>
-                        <p className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
-                          {room.bedConfiguration} • Max {room.capacity} Guests
-                          {room.sizeSquareMeters && ` • ${room.sizeSquareMeters} m²`}
-                        </p>
-                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                          ✓ Cash & Online Payment Accepted
-                        </span>
                       </div>
-                    </div>
 
-                    <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2">
-                      <div className="text-right">
-                        <span className="font-sans text-xl font-bold text-[#003366] dark:text-[#EAF2F4]">
-                          ${room.pricePerNight}
-                        </span>
-                        <span className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]"> {room.currency} / night</span>
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2">
+                        <div className="text-right">
+                          <span className="font-sans text-xl font-bold text-[#003366] dark:text-[#EAF2F4]">
+                            ${room.pricePerNight}
+                          </span>
+                          <span className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]"> {room.currency || "USD"} / night</span>
+                        </div>
+                        <Link href={`/rooms/${room.id}`}>
+                          <Button variant="primary" size="sm" className="font-bold rounded-xl text-xs px-4">
+                            Reserve Room
+                          </Button>
+                        </Link>
                       </div>
-                      <Link href={`/checkout/room?businessId=${business.id}&roomId=${room.id}`}>
-                        <Button variant="primary" size="sm">
-                          Book Room
-                        </Button>
-                      </Link>
                     </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center bg-gray-50 dark:bg-[#15323D] rounded-2xl border border-dashed border-[#E4E9EA] dark:border-[#20353D]">
+                    <p className="text-sm font-semibold text-[#4A5A62] dark:text-[#A9BCC2]">No room categories currently listed for this property.</p>
                   </div>
-                ))}
+                )}
               </div>
             )}
 
             {/* TAB CONTENT: DAY OUT PACKAGES */}
-            {activeTab === "dayout" && business.dayOutPackages && (
+            {activeTab === "dayout" && (
               <div className="space-y-4">
-                {business.dayOutPackages.map((pkg: any) => (
-                  <div
-                    key={pkg.id}
-                    className="p-5 rounded-2xl border border-[#FDA301]/40 bg-white dark:bg-[#0F252E] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm"
-                  >
-                    <div className="flex items-center gap-4 w-full sm:w-auto">
-                      <img
-                        src={pkg.imageUrls[0]}
-                        alt={pkg.title}
-                        className="w-24 h-24 rounded-xl object-cover"
-                      />
-                      <div className="space-y-1">
-                        <div className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider text-[#FDA301] bg-[#FDA301]/10 px-2 py-0.5 rounded-md">
-                          <Clock className="w-3 h-3" />
-                          <span>Day Pass ({pkg.startTime} – {pkg.endTime})</span>
-                        </div>
-                        <h4 className="font-display font-bold text-base text-[#0E1B22] dark:text-[#EAF2F4]">
-                          {pkg.title}
-                        </h4>
-                        <p className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
-                          {pkg.description}
-                        </p>
-                        <p className="text-[10px] text-gray-400">
-                          Max {pkg.maxOccupancy} guests • Book {pkg.advanceBookingHoursRequired}h in advance
-                        </p>
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {pkg.inclusions.slice(0, 3).map((inc: any) => (
-                            <span key={inc.id} className="text-[10px] bg-gray-100 dark:bg-[#15323D] text-[#4A5A62] dark:text-[#A9BCC2] px-2 py-0.5 rounded-md">
-                              ✓ {inc.name}
-                            </span>
-                          ))}
+                {business.dayOutPackages && business.dayOutPackages.length > 0 ? (
+                  business.dayOutPackages.map((pkg: any) => (
+                    <div
+                      key={pkg.id}
+                      className="p-5 rounded-2xl border border-[#FDA301]/40 bg-white dark:bg-[#0F252E] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm"
+                    >
+                      <div className="flex items-center gap-4 w-full sm:w-auto">
+                        <img
+                          src={(pkg.imageUrls && pkg.imageUrls.length > 0 ? pkg.imageUrls[0] : business.coverImageUrl) || "https://images.unsplash.com/photo-1540555700478-4be289fbecef"}
+                          alt={pkg.title}
+                          className="w-24 h-24 rounded-xl object-cover"
+                        />
+                        <div className="space-y-1">
+                          <div className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider text-[#FDA301] bg-[#FDA301]/10 px-2 py-0.5 rounded-md">
+                            <Clock className="w-3 h-3" />
+                            <span>Day Pass ({pkg.startTime || "09:00"} – {pkg.endTime || "17:00"})</span>
+                          </div>
+                          <h4 className="font-display font-bold text-base text-[#0E1B22] dark:text-[#EAF2F4]">
+                            {pkg.title}
+                          </h4>
+                          <p className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
+                            {pkg.description}
+                          </p>
+                          <p className="text-[10px] text-gray-400">
+                            Max {pkg.maxOccupancy || 10} guests • Book {pkg.advanceBookingHoursRequired || 24}h in advance
+                          </p>
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {(pkg.inclusions || []).slice(0, 3).map((inc: any, i: number) => (
+                              <span key={typeof inc === "object" ? inc.id || i : inc} className="text-[10px] bg-gray-100 dark:bg-[#15323D] text-[#4A5A62] dark:text-[#A9BCC2] px-2 py-0.5 rounded-md">
+                                ✓ {typeof inc === "object" ? inc.name : inc}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 shrink-0">
-                      <div className="text-right">
-                        <span className="font-sans text-xl font-bold text-[#003366] dark:text-[#EAF2F4]">
-                          ${pkg.price}
-                        </span>
-                        <span className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]"> {pkg.currency}</span>
-                        <span className="text-[10px] text-gray-400 block">{pkg.pricingUnit.replace("_", " ")}</span>
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 shrink-0">
+                        <div className="text-right">
+                          <span className="font-sans text-xl font-bold text-[#003366] dark:text-[#EAF2F4]">
+                            ${pkg.price}
+                          </span>
+                          <span className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]"> {pkg.currency || "USD"}</span>
+                          <span className="text-[10px] text-gray-400 block">{(pkg.pricingUnit || "PER_PERSON").replace(/_/g, " ")}</span>
+                        </div>
+                        <Link href={`/extra-packages/${pkg.id}`}>
+                          <Button variant="gold" size="sm">
+                            View Package Details
+                          </Button>
+                        </Link>
                       </div>
-                      <Link href={`/extra-packages/${pkg.id}`}>
-                        <Button variant="gold" size="sm">
-                          View Package Details
-                        </Button>
-                      </Link>
                     </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center bg-gray-50 dark:bg-[#15323D] rounded-2xl border border-dashed border-[#E4E9EA] dark:border-[#20353D]">
+                    <p className="text-sm font-semibold text-[#4A5A62] dark:text-[#A9BCC2]">No Day Out passes available at this time.</p>
                   </div>
-                ))}
+                )}
               </div>
             )}
 
             {/* TAB CONTENT: NIGHT OUT PACKAGES */}
-            {activeTab === "nightout" && business.nightOutPackages && (
+            {activeTab === "nightout" && (
               <div className="space-y-4">
-                {business.nightOutPackages.map((pkg: any) => (
-                  <div
-                    key={pkg.id}
-                    className="p-5 rounded-2xl border border-[#008080]/40 bg-white dark:bg-[#0F252E] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm"
-                  >
-                    <div className="flex items-center gap-4 w-full sm:w-auto">
-                      <img
-                        src={pkg.imageUrls[0]}
-                        alt={pkg.title}
-                        className="w-24 h-24 rounded-xl object-cover"
-                      />
-                      <div className="space-y-1">
-                        <div className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider text-[#008080] dark:text-[#3FCFC0] bg-[#008080]/10 px-2 py-0.5 rounded-md">
-                          <Moon className="w-3 h-3" />
-                          <span>Evening Dinner ({pkg.startTime} – {pkg.endTime})</span>
-                        </div>
-                        <h4 className="font-display font-bold text-base text-[#0E1B22] dark:text-[#EAF2F4]">
-                          {pkg.title}
-                        </h4>
-                        <p className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
-                          {pkg.description}
-                        </p>
-                        {pkg.includesOvernightStay && (
-                          <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                            ✓ Includes Overnight Stay
-                          </span>
-                        )}
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {pkg.inclusions.slice(0, 3).map((inc: any) => (
-                            <span key={inc.id} className="text-[10px] bg-gray-100 dark:bg-[#15323D] text-[#4A5A62] dark:text-[#A9BCC2] px-2 py-0.5 rounded-md">
-                              ✓ {inc.name}
+                {business.nightOutPackages && business.nightOutPackages.length > 0 ? (
+                  business.nightOutPackages.map((pkg: any) => (
+                    <div
+                      key={pkg.id}
+                      className="p-5 rounded-2xl border border-[#008080]/40 bg-white dark:bg-[#0F252E] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm"
+                    >
+                      <div className="flex items-center gap-4 w-full sm:w-auto">
+                        <img
+                          src={(pkg.imageUrls && pkg.imageUrls.length > 0 ? pkg.imageUrls[0] : business.coverImageUrl) || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4"}
+                          alt={pkg.title}
+                          className="w-24 h-24 rounded-xl object-cover"
+                        />
+                        <div className="space-y-1">
+                          <div className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider text-[#008080] dark:text-[#3FCFC0] bg-[#008080]/10 px-2 py-0.5 rounded-md">
+                            <Moon className="w-3 h-3" />
+                            <span>Evening Dinner ({pkg.startTime || "19:00"} – {pkg.endTime || "23:00"})</span>
+                          </div>
+                          <h4 className="font-display font-bold text-base text-[#0E1B22] dark:text-[#EAF2F4]">
+                            {pkg.title}
+                          </h4>
+                          <p className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
+                            {pkg.description}
+                          </p>
+                          {pkg.includesOvernightStay && (
+                            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                              ✓ Includes Overnight Stay
                             </span>
-                          ))}
+                          )}
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {(pkg.inclusions || []).slice(0, 3).map((inc: any, i: number) => (
+                              <span key={typeof inc === "object" ? inc.id || i : inc} className="text-[10px] bg-gray-100 dark:bg-[#15323D] text-[#4A5A62] dark:text-[#A9BCC2] px-2 py-0.5 rounded-md">
+                                ✓ {typeof inc === "object" ? inc.name : inc}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 shrink-0">
-                      <div className="text-right">
-                        <span className="font-sans text-xl font-bold text-[#003366] dark:text-[#EAF2F4]">
-                          ${pkg.price}
-                        </span>
-                        <span className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]"> {pkg.currency}</span>
-                        <span className="text-[10px] text-gray-400 block">{pkg.pricingUnit.replace("_", " ")}</span>
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 shrink-0">
+                        <div className="text-right">
+                          <span className="font-sans text-xl font-bold text-[#003366] dark:text-[#EAF2F4]">
+                            ${pkg.price}
+                          </span>
+                          <span className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]"> {pkg.currency || "USD"}</span>
+                          <span className="text-[10px] text-gray-400 block">{(pkg.pricingUnit || "PER_COUPLE").replace(/_/g, " ")}</span>
+                        </div>
+                        <Link href={`/extra-packages/${pkg.id}`}>
+                          <Button variant="secondary" size="sm">
+                            View Dinner Details
+                          </Button>
+                        </Link>
                       </div>
-                      <Link href={`/extra-packages/${pkg.id}`}>
-                        <Button variant="secondary" size="sm">
-                          View Dinner Details
-                        </Button>
-                      </Link>
                     </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center bg-gray-50 dark:bg-[#15323D] rounded-2xl border border-dashed border-[#E4E9EA] dark:border-[#20353D]">
+                    <p className="text-sm font-semibold text-[#4A5A62] dark:text-[#A9BCC2]">No Night Out dining packages available at this time.</p>
                   </div>
-                ))}
+                )}
               </div>
             )}
 
             {/* TAB CONTENT: TOUR PACKAGES */}
-            {activeTab === "tours" && business.tourPackages && (
+            {activeTab === "tours" && (
               <div className="space-y-4">
-                {business.tourPackages.map((pkg: any) => (
-                  <div
-                    key={pkg.id}
-                    className="p-5 rounded-2xl border border-[#003366]/30 bg-white dark:bg-[#0F252E] flex flex-col sm:flex-row items-start justify-between gap-4 shadow-sm"
-                  >
-                    <div className="flex items-start gap-4 w-full sm:w-auto">
-                      <img
-                        src={pkg.imageUrls[0]}
-                        alt={pkg.title}
-                        className="w-24 h-24 rounded-xl object-cover shrink-0"
-                      />
-                      <div className="space-y-1 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <div className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider text-[#003366] dark:text-[#3FCFC0] bg-[#003366]/10 px-2 py-0.5 rounded-md">
-                            <Compass className="w-3 h-3" />
-                            <span>{pkg.durationLabel}</span>
+                {business.tourPackages && business.tourPackages.length > 0 ? (
+                  business.tourPackages.map((pkg: any) => (
+                    <div
+                      key={pkg.id}
+                      className="p-5 rounded-2xl border border-[#003366]/30 bg-white dark:bg-[#0F252E] flex flex-col sm:flex-row items-start justify-between gap-4 shadow-sm"
+                    >
+                      <div className="flex items-start gap-4 w-full sm:w-auto">
+                        <img
+                          src={(pkg.imageUrls && pkg.imageUrls.length > 0 ? pkg.imageUrls[0] : (pkg.coverImageUrl || business.coverImageUrl)) || "https://images.unsplash.com/photo-1544644181-1484b3fdfc62"}
+                          alt={pkg.title}
+                          className="w-24 h-24 rounded-xl object-cover shrink-0"
+                        />
+                        <div className="space-y-1 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider text-[#003366] dark:text-[#3FCFC0] bg-[#003366]/10 px-2 py-0.5 rounded-md">
+                              <Compass className="w-3 h-3" />
+                              <span>{pkg.durationLabel || "1 Day"}</span>
+                            </div>
+                            {pkg.difficultyLevel && (
+                              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300">
+                                {pkg.difficultyLevel}
+                              </span>
+                            )}
+                            {pkg.category && (
+                              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-[#008080]/10 text-[#008080] dark:text-[#3FCFC0]">
+                                {pkg.category}
+                              </span>
+                            )}
+                            {pkg.isPrivateTour && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300">
+                                🔒 Private
+                              </span>
+                            )}
                           </div>
-                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300">
-                            {pkg.difficultyLevel}
-                          </span>
-                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-[#008080]/10 text-[#008080] dark:text-[#3FCFC0]">
-                            {pkg.category}
-                          </span>
-                          {pkg.isPrivateTour && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300">
-                              🔒 Private
-                            </span>
-                          )}
-                        </div>
-                        <h4 className="font-display font-bold text-base text-[#0E1B22] dark:text-[#EAF2F4]">
-                          {pkg.title}
-                        </h4>
-                        <p className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
-                          {pkg.description}
-                        </p>
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {pkg.inclusions.slice(0, 4).map((inc: any) => (
-                            <span key={inc.id} className="text-[10px] bg-gray-100 dark:bg-[#15323D] text-[#4A5A62] dark:text-[#A9BCC2] px-2 py-0.5 rounded-md">
-                              ✓ {inc.name}
-                            </span>
-                          ))}
+                          <h4 className="font-display font-bold text-base text-[#0E1B22] dark:text-[#EAF2F4]">
+                            {pkg.title}
+                          </h4>
+                          <p className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
+                            {pkg.description}
+                          </p>
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {(pkg.inclusions || []).slice(0, 4).map((inc: any, i: number) => (
+                              <span key={typeof inc === "object" ? inc.id || i : inc} className="text-[10px] bg-gray-100 dark:bg-[#15323D] text-[#4A5A62] dark:text-[#A9BCC2] px-2 py-0.5 rounded-md">
+                                ✓ {typeof inc === "object" ? inc.name : inc}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 shrink-0">
-                      <div className="text-right">
-                        <span className="font-sans text-xl font-bold text-[#003366] dark:text-[#EAF2F4]">
-                          ${pkg.price}
-                        </span>
-                        <span className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]"> {pkg.currency} / person</span>
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 shrink-0">
+                        <div className="text-right">
+                          <span className="font-sans text-xl font-bold text-[#003366] dark:text-[#EAF2F4]">
+                            ${pkg.price}
+                          </span>
+                          <span className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]"> {pkg.currency || "USD"} / person</span>
+                        </div>
+                        <Link href={`/tours/${pkg.id}`}>
+                          <Button variant="primary" size="sm">
+                            View Tour Details
+                          </Button>
+                        </Link>
                       </div>
-                      <Link href={`/tours/${pkg.id}`}>
-                        <Button variant="primary" size="sm">
-                          View Tour Details
-                        </Button>
-                      </Link>
                     </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center bg-gray-50 dark:bg-[#15323D] rounded-2xl border border-dashed border-[#E4E9EA] dark:border-[#20353D]">
+                    <p className="text-sm font-semibold text-[#4A5A62] dark:text-[#A9BCC2]">No excursion tours currently listed by this property.</p>
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>

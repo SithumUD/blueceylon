@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MOCK_DASHBOARD_BOOKINGS, DashboardBooking, BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS, PAYMENT_METHOD_LABELS } from "@/lib/mock-data/bookings";
+import { DashboardBooking, BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS, PAYMENT_METHOD_LABELS } from "@/lib/mock-data/bookings";
 import { useAuthStore } from "@/store/auth-store";
 import { getMyBookings, getBusinessBookings, cancelBooking, updateBookingStatus } from "@/lib/api/booking";
 
@@ -18,15 +18,18 @@ export default function DashboardBookingsSubPage() {
     try {
       if (user?.role === "TRAVELER") {
         const res = await getMyBookings();
-        setBookings(res);
+        setBookings(res || []);
       } else {
-        const businessId = user?.id || "b-1";
-        const res = await getBusinessBookings(businessId);
-        setBookings(res);
+        const businessId = user?.id || "";
+        if (businessId) {
+          const res = await getBusinessBookings(businessId);
+          setBookings(res || []);
+        } else {
+          setBookings([]);
+        }
       }
     } catch {
-      // Fallback
-      setBookings(MOCK_DASHBOARD_BOOKINGS);
+      setBookings([]);
     } finally {
       setLoading(false);
     }

@@ -33,8 +33,16 @@ public class ExperiencePackageService {
         return dayOutRepo.findById(id).orElseThrow(() -> new RuntimeException("DayOutPackage not found"));
     }
 
+    public DayOutPackageResponse getDayOutPackageResponseById(String id) {
+        return mapToDayOutResponse(getDayOutPackageById(id));
+    }
+
     public NightOutPackage getNightOutPackageById(String id) {
         return nightOutRepo.findById(id).orElseThrow(() -> new RuntimeException("NightOutPackage not found"));
+    }
+
+    public NightOutPackageResponse getNightOutPackageResponseById(String id) {
+        return mapToNightOutResponse(getNightOutPackageById(id));
     }
 
     public DayOutPackageResponse createDayOutPackage(String ownerId, DayOutPackageRequest request) {
@@ -61,6 +69,21 @@ public class ExperiencePackageService {
                 .map(this::mapToDayOutResponse).collect(Collectors.toList());
     }
 
+    public List<DayOutPackageResponse> getAllDayOutPackages() {
+        return dayOutRepo.findAll().stream()
+                .map(this::mapToDayOutResponse).collect(Collectors.toList());
+    }
+
+    public List<NightOutPackageResponse> getAllNightOutPackages() {
+        return nightOutRepo.findAll().stream()
+                .map(this::mapToNightOutResponse).collect(Collectors.toList());
+    }
+
+    public List<DayOutPackageResponse> getDayOutPackagesByHotelId(String hotelId) {
+        return dayOutRepo.findByHotelId(hotelId).stream()
+                .map(this::mapToDayOutResponse).collect(Collectors.toList());
+    }
+
     public NightOutPackageResponse createNightOutPackage(String ownerId, NightOutPackageRequest request) {
         Hotel hotel = getHotelForOwner(ownerId);
         NightOutPackage pkg = new NightOutPackage();
@@ -83,6 +106,11 @@ public class ExperiencePackageService {
 
     public List<NightOutPackageResponse> getMyNightOutPackages(String ownerId) {
         return nightOutRepo.findByHotelId(getHotelForOwner(ownerId).getId()).stream()
+                .map(this::mapToNightOutResponse).collect(Collectors.toList());
+    }
+
+    public List<NightOutPackageResponse> getNightOutPackagesByHotelId(String hotelId) {
+        return nightOutRepo.findByHotelId(hotelId).stream()
                 .map(this::mapToNightOutResponse).collect(Collectors.toList());
     }
 
@@ -140,6 +168,17 @@ public class ExperiencePackageService {
         res.setAvailableDays(p.getAvailableDays());
         res.setImageUrls(p.getImageUrls());
         res.setAdvanceBookingHoursRequired(p.getAdvanceBookingHoursRequired());
+        res.setCurrency(p.getCurrency());
+        if (p.getInclusions() != null) {
+            res.setInclusions(new java.util.ArrayList<>(p.getInclusions()));
+        }
+        if (p.getHotel() != null) {
+            res.setHotelId(p.getHotel().getId());
+            res.setHotelName(p.getHotel().getName());
+            res.setHotelCity(p.getHotel().getCity());
+            res.setHotelCoverImage(p.getHotel().getCoverImageUrl());
+            res.setSltdaVerified(p.getHotel().getVerificationStatus() == com.blueceylon.catalog_service.domain.model.enums.VerificationStatus.VERIFIED);
+        }
         return res;
     }
 
@@ -157,6 +196,17 @@ public class ExperiencePackageService {
         res.setMaxOccupancy(p.getMaxOccupancy());
         res.setImageUrls(p.getImageUrls());
         res.setAdvanceBookingHoursRequired(p.getAdvanceBookingHoursRequired());
+        res.setCurrency(p.getCurrency());
+        if (p.getInclusions() != null) {
+            res.setInclusions(new java.util.ArrayList<>(p.getInclusions()));
+        }
+        if (p.getHotel() != null) {
+            res.setHotelId(p.getHotel().getId());
+            res.setHotelName(p.getHotel().getName());
+            res.setHotelCity(p.getHotel().getCity());
+            res.setHotelCoverImage(p.getHotel().getCoverImageUrl());
+            res.setSltdaVerified(p.getHotel().getVerificationStatus() == com.blueceylon.catalog_service.domain.model.enums.VerificationStatus.VERIFIED);
+        }
         return res;
     }
 
@@ -252,4 +302,3 @@ public class ExperiencePackageService {
         hourlyRepo.delete(booking);
     }
 }
-

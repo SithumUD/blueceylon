@@ -5,15 +5,15 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Star, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MOCK_BUSINESSES } from "@/lib/mock-data/businesses";
-import { MOCK_REVIEWS, type Review } from "@/lib/mock-data/reviews";
+import { getBusinessById } from "@/lib/api/catalog";
+import { type Review } from "@/lib/mock-data/reviews";
 import { format } from "date-fns";
 import { getReviews, submitReview } from "@/lib/api/reviews";
 
 export default function BusinessReviewsPage() {
   const params = useParams();
   const businessId = params.id as string;
-  const business = MOCK_BUSINESSES.find((b) => b.id === businessId) || MOCK_BUSINESSES[0];
+  const [business, setBusiness] = useState<any>(null);
 
   const [reviewsList, setReviewsList] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,26 +24,35 @@ export default function BusinessReviewsPage() {
   const [comment, setComment] = useState("");
   const [rating, setRating] = useState(5);
 
-  const loadReviews = async () => {
+  const loadData = async () => {
+    if (!businessId) return;
     setLoading(true);
     try {
-      const entityType = (business.type || "HOTEL") as any;
-      const res = await getReviews({ entityId: business.id, entityType });
-      setReviewsList(res.content);
+      const bRes = await getBusinessById(businessId);
+      setBusiness(bRes);
+      if (bRes) {
+        const entityType = (bRes.type || "HOTEL") as any;
+        const res = await getReviews({ entityId: bRes.id, entityType });
+        if (res && Array.isArray(res.content)) {
+          setReviewsList(res.content);
+        } else {
+          setReviewsList([]);
+        }
+      }
     } catch {
-      setReviewsList(MOCK_REVIEWS.filter((r) => r.entityId === business.id));
+      setReviewsList([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadReviews();
+    loadData();
   }, [businessId]);
 
   const handleAddReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!comment || !reviewerName) return;
+    if (!comment || !reviewerName || !business?.id) return;
     setSubmitting(true);
     try {
       const entityType = (business.type || "HOTEL") as any;
@@ -58,31 +67,33 @@ export default function BusinessReviewsPage() {
       setBookingReference("");
       setComment("");
       setRating(5);
-      loadReviews();
-    } catch {
-      // Local fallback simulation
-      const newRev: Review = {
-        id: `rev-${Date.now()}`,
-        entityId: business.id,
-        entityType: "HOTEL",
-        reviewerName,
-        reviewerCountry: "Traveler",
-        rating,
-        stayOrTourDate: new Date().toISOString().split("T")[0],
-        verified: Boolean(bookingReference),
-        bookingId: `bk-uuid-${Date.now()}`,
-        bookingReference: bookingReference || undefined,
-        comment,
-      };
-      setReviewsList([newRev, ...reviewsList]);
-      setReviewerName("");
-      setBookingReference("");
-      setComment("");
-      setRating(5);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || "Failed to submit review");
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center text-sm text-[#4A5A62] dark:text-[#A9BCC2]">
+        <div className="w-8 h-8 border-4 border-[#003366] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p>Loading verified reviews...</p>
+      </div>
+    );
+  }
+
+  if (!business) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center space-y-4">
+        <h2 className="text-2xl font-bold text-[#0E1B22] dark:text-[#EAF2F4]">Property not found</h2>
+        <Link href="/rooms">
+          <Button variant="secondary" size="sm">Back to Accommodations</Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">

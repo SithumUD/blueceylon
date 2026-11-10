@@ -30,10 +30,10 @@ export function Footer() {
             Explore Destinations
           </h4>
           <ul className="space-y-2 text-xs">
-            <li><Link href="/rooms" className="hover:text-white transition-colors">Overnight Stays & Rooms</Link></li>
+            <li><Link href="/rooms" className="hover:text-white transition-colors">Hotels, Resorts & Stays</Link></li>
             <li><Link href="/tours" className="hover:text-white transition-colors">Safaris & Excursions</Link></li>
-            <li><Link href="/hotels" className="hover:text-white transition-colors">Hotels & Villas Directory</Link></li>
-            <li><Link href="/extra-packages" className="hover:text-white transition-colors">Day Out Pool & Lunch Passes</Link></li>
+            <li><Link href="/tour-guides" className="hover:text-white transition-colors">Verified Tour Guides</Link></li>
+            <li><Link href="/extra-packages" className="hover:text-white transition-colors">Day Out & Dining Passes</Link></li>
           </ul>
         </div>
 

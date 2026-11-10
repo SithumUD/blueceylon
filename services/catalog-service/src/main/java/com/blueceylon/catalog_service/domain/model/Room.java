@@ -30,6 +30,9 @@ public class Room extends BaseModel {
     @Column(name = "room_number")
     private String roomNumber;
 
+    @Column(name = "display_name")
+    private String displayName;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "room_type", nullable = false)
     private RoomType roomType;
@@ -100,6 +103,8 @@ public class Room extends BaseModel {
     public void setHotel(Hotel hotel) { this.hotel = hotel; }
     public String getRoomNumber() { return roomNumber; }
     public void setRoomNumber(String roomNumber) { this.roomNumber = roomNumber; }
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
     public RoomType getRoomType() { return roomType; }
     public void setRoomType(RoomType roomType) { this.roomType = roomType; }
     public SriLankanCity getCity() { return city; }

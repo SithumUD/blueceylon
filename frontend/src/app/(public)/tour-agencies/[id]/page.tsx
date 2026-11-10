@@ -8,7 +8,7 @@ import {
   Globe, Briefcase, Calendar, Truck, CheckCircle2, Navigation
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MOCK_AGENCIES, AGENCY_SPECIALIZATION_LABELS, VEHICLE_FLEET_LABELS } from "@/lib/mock-data/agencies";
+import { AGENCY_SPECIALIZATION_LABELS, VEHICLE_FLEET_LABELS } from "@/lib/mock-data/agencies";
 import { CITY_LABELS, REGION_LABELS } from "@/lib/mock-data/businesses";
 import { getBusinessById } from "@/lib/api/catalog";
 import { MapView } from "@/components/common/map-view";
@@ -28,20 +28,23 @@ export default function TourAgencyDetailsPage() {
         const res = await getBusinessById(id);
         if (isMounted && res) {
           setAgency(res);
-          setLoading(false);
-          return;
+        } else if (isMounted) {
+          setAgency(null);
         }
       } catch {
-        // Fallback to mock data
-      }
-
-      const mock = MOCK_AGENCIES.find((a) => a.id === id);
-      if (isMounted) {
-        setAgency(mock || null);
-        setLoading(false);
+        if (isMounted) {
+          setAgency(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
     loadAgency();
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
   if (loading) {

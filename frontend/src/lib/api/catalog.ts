@@ -57,6 +57,36 @@ export async function getRoomById(id: string): Promise<Room> {
   });
 }
 
+export async function getRoomsByHotelId(hotelId: string): Promise<Room[]> {
+  return apiFetch<Room[]>(`/api/v1/catalog/public/items/hotels/${hotelId}/rooms`, {
+    method: "GET",
+  });
+}
+
+export async function getAllDayOutPackages(): Promise<DayOutPackage[]> {
+  return apiFetch<DayOutPackage[]>("/api/v1/catalog/public/items/day-out", {
+    method: "GET",
+  });
+}
+
+export async function getAllNightOutPackages(): Promise<NightOutPackage[]> {
+  return apiFetch<NightOutPackage[]>("/api/v1/catalog/public/items/night-out", {
+    method: "GET",
+  });
+}
+
+export async function getHotelDayOutPackages(hotelId: string): Promise<DayOutPackage[]> {
+  return apiFetch<DayOutPackage[]>(`/api/v1/catalog/public/items/hotels/${hotelId}/day-out`, {
+    method: "GET",
+  });
+}
+
+export async function getHotelNightOutPackages(hotelId: string): Promise<NightOutPackage[]> {
+  return apiFetch<NightOutPackage[]>(`/api/v1/catalog/public/items/hotels/${hotelId}/night-out`, {
+    method: "GET",
+  });
+}
+
 export async function getDayOutPackageById(id: string): Promise<DayOutPackage> {
   return apiFetch<DayOutPackage>(`/api/v1/catalog/public/items/day-out/${id}`, {
     method: "GET",
@@ -65,6 +95,12 @@ export async function getDayOutPackageById(id: string): Promise<DayOutPackage> {
 
 export async function getNightOutPackageById(id: string): Promise<NightOutPackage> {
   return apiFetch<NightOutPackage>(`/api/v1/catalog/public/items/night-out/${id}`, {
+    method: "GET",
+  });
+}
+
+export async function getBusinessTours(businessId: string): Promise<TourPackage[]> {
+  return apiFetch<TourPackage[]>(`/api/v1/catalog/public/items/businesses/${businessId}/tours`, {
     method: "GET",
   });
 }

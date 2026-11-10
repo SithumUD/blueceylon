@@ -5,6 +5,7 @@ public class TourPackageRequest {
     private String title;
     private String description;
     private Double price;
+    private Currency currency = Currency.USD;
     private Integer durationDays;
     private TourCategory category;
     private SriLankanCity startingCity;
@@ -24,6 +25,8 @@ public class TourPackageRequest {
     public void setDescription(String description) { this.description = description; }
     public Double getPrice() { return price; }
     public void setPrice(Double price) { this.price = price; }
+    public Currency getCurrency() { return currency; }
+    public void setCurrency(Currency currency) { this.currency = currency; }
     public Integer getDurationDays() { return durationDays; }
     public void setDurationDays(Integer durationDays) { this.durationDays = durationDays; }
     public TourCategory getCategory() { return category; }

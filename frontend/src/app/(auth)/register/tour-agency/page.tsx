@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { getMyBusiness, createAgencyDraft, submitBusiness } from "@/lib/api/catalog";
 import { useAuthStore } from "@/store/auth-store";
+import { Button } from "@/components/ui/button";
 import { LocationPicker } from "@/components/common/location-picker";
 
 /* ─── shared field atoms ─── */
@@ -77,6 +78,14 @@ interface AgencyForm {
 
 export default function TourAgencyRegisterPage() {
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+
   const [step, setStep] = useState(1);
   const TOTAL = STEPS.length;
 
@@ -129,15 +138,43 @@ export default function TourAgencyRegisterPage() {
             specializations: (existing as any).specializations || p.specializations,
             fleetTypes: (existing as any).fleetTypes || p.fleetTypes,
             coverImageUrl: existing.coverImageUrl || p.coverImageUrl,
-            videoUrl: existing.videoUrl || p.videoUrl,
+            videoUrl: (existing as any).videoUrl || p.videoUrl,
           }));
         }
       } catch {
-        // No draft existing
+        // No draft exists
       }
     }
     loadDraft();
   }, []);
+
+  if (hydrated && !user && !accessToken) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center px-4 py-16 bg-[#F4F6F8] dark:bg-[#081419]">
+        <div className="max-w-md w-full p-8 rounded-3xl bg-white dark:bg-[#0F252E] border border-[#E4E9EA] dark:border-[#20353D] text-center space-y-5 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-[#008080]/10 text-[#008080] dark:text-[#3FCFC0] flex items-center justify-center mx-auto">
+            <Briefcase className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-bold text-[#0E1B22] dark:text-[#EAF2F4]">Sign In to Register Agency</h2>
+          <p className="text-xs text-[#4A5A62] dark:text-[#A9BCC2] leading-relaxed">
+            You must be logged in to your Blue Ceylon account to register and manage your licensed tour agency or travel company.
+          </p>
+          <div className="pt-2 flex flex-col gap-2.5">
+            <Link href="/login?redirect=/register/tour-agency">
+              <Button variant="primary" className="w-full font-bold py-3 rounded-xl">
+                Go to Login
+              </Button>
+            </Link>
+            <Link href="/register">
+              <Button variant="ghost" className="w-full font-semibold text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
+                Create a New Account
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const set = (f: keyof AgencyForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(p => ({ ...p, [f]: e.target.value }));

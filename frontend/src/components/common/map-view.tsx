@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { MapPin, Navigation, ExternalLink, Compass } from "lucide-react";
 
 interface MapViewProps {
@@ -12,143 +12,67 @@ interface MapViewProps {
   zoom?: number;
 }
 
-declare global {
-  interface Window {
-    google?: any;
-  }
-}
-
 export function MapView({
   latitude,
   longitude,
   title,
   address,
-  height = "320px",
+  height = "340px",
   zoom = 15,
 }: MapViewProps) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [loadError, setLoadError] = useState(false);
+  const [mapType, setMapType] = useState<"osm" | "google">("osm");
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-  useEffect(() => {
-    if (!apiKey) {
-      setLoadError(true);
-      return;
-    }
+  // Safe coordinates with fallback to Sri Lanka center
+  const validLat = Number.isFinite(Number(latitude)) && Number(latitude) !== 0 ? Number(latitude) : 6.9271;
+  const validLng = Number.isFinite(Number(longitude)) && Number(longitude) !== 0 ? Number(longitude) : 79.8612;
 
-    if (window.google && window.google.maps) {
-      renderMap();
-      return;
-    }
-
-    const scriptId = "google-maps-view-script";
-    if (!document.getElementById(scriptId)) {
-      const script = document.createElement("script");
-      script.id = scriptId;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => renderMap();
-      script.onerror = () => setLoadError(true);
-      document.head.appendChild(script);
-    } else {
-      const interval = setInterval(() => {
-        if (window.google && window.google.maps) {
-          clearInterval(interval);
-          renderMap();
-        }
-      }, 300);
-      return () => clearInterval(interval);
-    }
-  }, [latitude, longitude, apiKey]);
-
-  const renderMap = () => {
-    if (!mapRef.current || !window.google || !window.google.maps) return;
-
-    const pos = { lat: latitude, lng: longitude };
-
-    const map = new window.google.maps.Map(mapRef.current, {
-      center: pos,
-      zoom: zoom,
-      mapTypeControl: true,
-      streetViewControl: true,
-      fullscreenControl: true,
-      zoomControl: true,
-    });
-
-    const marker = new window.google.maps.Marker({
-      position: pos,
-      map: map,
-      title: title,
-      animation: window.google.maps.Animation.DROP,
-    });
-
-    const infoWindow = new window.google.maps.InfoWindow({
-      content: `
-        <div style="padding:8px; font-family:sans-serif; max-width:220px;">
-          <h4 style="margin:0 0 4px 0; font-size:14px; font-weight:700; color:#003366;">${title}</h4>
-          ${address ? `<p style="margin:0; font-size:12px; color:#4A5A62;">${address}</p>` : ""}
-          <a href="https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin-top:6px; font-size:11px; color:#008080; text-decoration:underline; font-weight:600;">Open in Google Maps &rarr;</a>
-        </div>
-      `,
-    });
-
-    marker.addListener("click", () => {
-      infoWindow.open(map, marker);
-    });
-  };
-
-  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+  const delta = 0.012;
+  const bbox = `${validLng - delta},${validLat - delta},${validLng + delta},${validLat + delta}`;
+  const osmEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${validLat},${validLng}`;
+  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${validLat},${validLng}`;
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-base font-bold text-[#0E1B22] flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-[#008080]" />
-            <span>Property & Region Location</span>
+          <h3 className="text-base font-bold text-[#0E1B22] dark:text-[#EAF2F4] flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-[#008080] dark:text-[#3FCFC0]" />
+            <span>Property & Surroundings Map</span>
           </h3>
-          {address && <p className="text-xs text-[#4A5A62] mt-0.5">{address}</p>}
+          {address && <p className="text-xs text-[#4A5A62] dark:text-[#A9BCC2] mt-0.5">{address}</p>}
         </div>
 
         <a
           href={directionsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold hover:bg-slate-50 transition-colors"
-          style={{ borderColor: "#008080", color: "#008080" }}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold text-[#008080] dark:text-[#3FCFC0] border-[#008080]/30 dark:border-[#3FCFC0]/30 hover:bg-[#008080]/10 transition-colors"
         >
           <Navigation className="w-3.5 h-3.5" />
-          <span>Get Directions</span>
+          <span>Get Directions in Google Maps</span>
           <ExternalLink className="w-3 h-3 ml-0.5" />
         </a>
       </div>
 
-      {/* Map Card */}
-      <div className="relative rounded-2xl overflow-hidden border shadow-sm" style={{ borderColor: "#E4E9EA", height }}>
-        <div ref={mapRef} className="w-full h-full bg-slate-100" />
+      {/* Interactive Map Frame */}
+      <div 
+        className="relative rounded-2xl overflow-hidden border border-[#E4E9EA] dark:border-[#20353D] shadow-sm bg-slate-100 dark:bg-[#0F252E]" 
+        style={{ height }}
+      >
+        <iframe
+          title={`Map location for ${title}`}
+          src={osmEmbedUrl}
+          className="w-full h-full border-0"
+          loading="lazy"
+          allowFullScreen
+        />
 
-        {(!apiKey || loadError) && (
-          <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[2px] flex flex-col items-center justify-center p-6 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-white text-[#003366] flex items-center justify-center shadow-lg mb-3">
-              <Compass className="w-6 h-6 animate-pulse" />
-            </div>
-            <h4 className="font-semibold text-sm text-slate-900 mb-1">{title}</h4>
-            <p className="text-xs text-slate-600 max-w-sm mb-3">
-              {address || `Location coordinates: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`}
-            </p>
-            <a
-              href={directionsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 rounded-xl bg-[#003366] text-white text-xs font-semibold hover:bg-[#002244] transition-colors flex items-center gap-1.5 shadow-md"
-            >
-              <MapPin className="w-3.5 h-3.5" />
-              <span>View on Google Maps</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          </div>
-        )}
+        {/* Location badge overlay */}
+        <div className="absolute top-3 left-3 bg-white/95 dark:bg-[#0F252E]/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-[#E4E9EA] dark:border-[#20353D] shadow-md flex items-center gap-2 text-xs">
+          <div className="w-2 h-2 rounded-full bg-[#1F9D6C] animate-ping" />
+          <span className="font-bold text-[#0E1B22] dark:text-[#EAF2F4] line-clamp-1">{title}</span>
+        </div>
       </div>
     </div>
   );

@@ -18,33 +18,9 @@ interface CustomQuote {
   requestedAt: string;
 }
 
-const MOCK_QUOTES: CustomQuote[] = [
-  {
-    id: "q-101",
-    recipientName: "Lanka Heritage Tours & Travels",
-    recipientType: "TOUR_AGENCY",
-    destination: "Sigiriya, Polonnaruwa & Dambulla (3 Days)",
-    travelDates: "2026-09-10 → 2026-09-13",
-    paxCount: 4,
-    status: "RESPONDED",
-    estimatedPrice: "LKR 125,000",
-    requestedAt: "2026-08-14",
-  },
-  {
-    id: "q-102",
-    recipientName: "Kasun Perera (Licensed Guide)",
-    recipientType: "TOUR_GUIDE",
-    destination: "Ella Rock Hike & Nine Arches Safari",
-    travelDates: "2026-09-18",
-    paxCount: 2,
-    status: "PENDING",
-    requestedAt: "2026-08-16",
-  },
-];
-
 export default function MyQuotesPage() {
   const user = useAuthStore((s) => s.user);
-  const [quotes, setQuotes] = useState<CustomQuote[]>(MOCK_QUOTES);
+  const [quotes, setQuotes] = useState<CustomQuote[]>([]);
 
   if (!user) {
     return (

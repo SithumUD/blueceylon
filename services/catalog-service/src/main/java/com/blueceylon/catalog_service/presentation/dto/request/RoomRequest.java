@@ -2,10 +2,13 @@ package com.blueceylon.catalog_service.presentation.dto.request;
 import com.blueceylon.catalog_service.domain.model.enums.ViewType;
 import com.blueceylon.catalog_service.domain.model.enums.RoomType;
 import com.blueceylon.catalog_service.domain.model.enums.Currency;
+import com.blueceylon.catalog_service.domain.model.enums.SriLankanCity;
 import java.util.List;
 public class RoomRequest {
     private String roomNumber;
+    private String displayName;
     private RoomType roomType;
+    private SriLankanCity city;
     private Double pricePerNight;
     private Currency currency;
     private Integer capacity;
@@ -20,8 +23,12 @@ public class RoomRequest {
 
     public String getRoomNumber() { return roomNumber; }
     public void setRoomNumber(String roomNumber) { this.roomNumber = roomNumber; }
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
     public RoomType getRoomType() { return roomType; }
     public void setRoomType(RoomType roomType) { this.roomType = roomType; }
+    public SriLankanCity getCity() { return city; }
+    public void setCity(SriLankanCity city) { this.city = city; }
     public Double getPricePerNight() { return pricePerNight; }
     public void setPricePerNight(Double pricePerNight) { this.pricePerNight = pricePerNight; }
     public Currency getCurrency() { return currency; }

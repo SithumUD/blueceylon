@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { getMyBusiness, createGuideDraft, submitBusiness } from "@/lib/api/catalog";
 import { useAuthStore } from "@/store/auth-store";
+import { Button } from "@/components/ui/button";
 
 /* ─── shared field atoms ─── */
 const inputCls =
@@ -78,6 +79,14 @@ interface GuideForm {
 
 export default function TourGuideRegisterPage() {
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+
   const [step, setStep] = useState(1);
   const TOTAL = STEPS.length;
 
@@ -138,6 +147,34 @@ export default function TourGuideRegisterPage() {
     }
     loadDraft();
   }, []);
+
+  if (hydrated && !user && !accessToken) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center px-4 py-16 bg-[#F4F6F8] dark:bg-[#081419]">
+        <div className="max-w-md w-full p-8 rounded-3xl bg-white dark:bg-[#0F252E] border border-[#E4E9EA] dark:border-[#20353D] text-center space-y-5 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-[#FDA301]/10 text-[#FDA301] flex items-center justify-center mx-auto">
+            <User className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-bold text-[#0E1B22] dark:text-[#EAF2F4]">Sign In to Create Guide Profile</h2>
+          <p className="text-xs text-[#4A5A62] dark:text-[#A9BCC2] leading-relaxed">
+            You must be logged in to your Blue Ceylon account to register as an accredited tourist guide or driver.
+          </p>
+          <div className="pt-2 flex flex-col gap-2.5">
+            <Link href="/login?redirect=/register/tour-guide">
+              <Button variant="gold" className="w-full font-bold py-3 rounded-xl">
+                Go to Login
+              </Button>
+            </Link>
+            <Link href="/register">
+              <Button variant="ghost" className="w-full font-semibold text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
+                Create a New Account
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const set = (f: keyof GuideForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(p => ({ ...p, [f]: e.target.value }));

@@ -9,8 +9,6 @@ import { getBusinessById, getRoomById, getDayOutPackageById, getNightOutPackageB
 import { createBooking } from "@/lib/api/booking";
 import { initiatePayment } from "@/lib/api/payment";
 import { useAuthStore } from "@/store/auth-store";
-import { MOCK_BUSINESSES } from "@/lib/mock-data/businesses";
-import { MOCK_GUIDES } from "@/lib/mock-data/guides";
 
 export default function CheckoutPage() {
   return (
@@ -25,7 +23,7 @@ function CheckoutPageContent() {
   const params = useParams();
   const bookingType = params.bookingType as string; // 'room' | 'dayout' | 'nightout' | 'tour'
 
-  const businessId = searchParams.get("businessId") || "b-1";
+  const businessId = searchParams.get("businessId");
   const roomId = searchParams.get("roomId");
   const dayOutId = searchParams.get("dayOutId");
   const nightOutId = searchParams.get("nightOutId");
@@ -40,8 +38,8 @@ function CheckoutPageContent() {
   const [tourPackage, setTourPackage] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const checkIn = searchParams.get("checkIn") || "2026-08-12";
-  const checkOut = searchParams.get("checkOut") || "2026-08-15";
+  const checkIn = searchParams.get("checkIn") || new Date().toISOString().split("T")[0];
+  const checkOut = searchParams.get("checkOut") || new Date(Date.now() + 86400000 * 3).toISOString().split("T")[0];
 
   const diffTime = Math.abs(new Date(checkOut).getTime() - new Date(checkIn).getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
@@ -54,31 +52,32 @@ function CheckoutPageContent() {
       setLoading(true);
       try {
         if (bookingType === "room" && roomId) {
-          const [rRes, bRes] = await Promise.all([
-            getRoomById(roomId),
-            getBusinessById(businessId).catch(() => null)
-          ]);
+          const rRes = await getRoomById(roomId);
           if (isMounted) {
             setRoom(rRes);
-            setBusiness(bRes || MOCK_BUSINESSES.find((b) => b.id === businessId) || MOCK_BUSINESSES[0]);
+            const targetBusinessId = (rRes as any)?.hotelId || businessId;
+            if (targetBusinessId) {
+              const bRes = await getBusinessById(targetBusinessId).catch(() => null);
+              if (isMounted) setBusiness(bRes);
+            }
           }
         } else if (bookingType === "dayout" && dayOutId) {
-          const [dRes, bRes] = await Promise.all([
-            getDayOutPackageById(dayOutId),
-            getBusinessById(businessId).catch(() => null)
-          ]);
+          const dRes = await getDayOutPackageById(dayOutId);
           if (isMounted) {
             setDayOut(dRes);
-            setBusiness(bRes || MOCK_BUSINESSES.find((b) => b.id === businessId) || MOCK_BUSINESSES[0]);
+            if (businessId) {
+              const bRes = await getBusinessById(businessId).catch(() => null);
+              if (isMounted) setBusiness(bRes);
+            }
           }
         } else if (bookingType === "nightout" && nightOutId) {
-          const [nRes, bRes] = await Promise.all([
-            getNightOutPackageById(nightOutId),
-            getBusinessById(businessId).catch(() => null)
-          ]);
+          const nRes = await getNightOutPackageById(nightOutId);
           if (isMounted) {
             setNightOut(nRes);
-            setBusiness(bRes || MOCK_BUSINESSES.find((b) => b.id === businessId) || MOCK_BUSINESSES[0]);
+            if (businessId) {
+              const bRes = await getBusinessById(businessId).catch(() => null);
+              if (isMounted) setBusiness(bRes);
+            }
           }
         } else if (bookingType === "tour") {
           if (guideId) {
@@ -86,22 +85,22 @@ function CheckoutPageContent() {
             if (isMounted) {
               setGuide({
                 ...gRes,
-                dailyRate: (gRes as any).dailyRate || 120,
+                dailyRate: (gRes as any)?.dailyRate || 120,
               });
             }
           } else if (tourPackageId) {
-            const [tRes, bRes] = await Promise.all([
-              getTourById(tourPackageId),
-              getBusinessById(businessId).catch(() => null)
-            ]);
+            const tRes = await getTourById(tourPackageId);
             if (isMounted) {
               setTourPackage(tRes);
-              setBusiness(bRes || MOCK_BUSINESSES.find((b) => b.id === businessId) || MOCK_BUSINESSES[0]);
+              if (businessId) {
+                const bRes = await getBusinessById(businessId).catch(() => null);
+                if (isMounted) setBusiness(bRes);
+              }
             }
           }
         }
-      } catch {
-        // Log error and fall back to local mock data matching
+      } catch (err) {
+        console.error("Failed to load checkout details:", err);
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -114,34 +113,29 @@ function CheckoutPageContent() {
     };
   }, [bookingType, roomId, dayOutId, nightOutId, tourPackageId, guideId, businessId]);
 
-  // Compute pricing (using fetched states with local mocks as safety fallback)
-  const finalRoom = room || (MOCK_BUSINESSES.find((b) => b.id === businessId) || MOCK_BUSINESSES[0]).rooms.find((r) => r.id === roomId) || MOCK_BUSINESSES[0].rooms[0];
-  const finalDayOut = dayOut || (MOCK_BUSINESSES.find((b) => b.id === businessId) || MOCK_BUSINESSES[0]).dayOutPackages?.find((d) => d.id === dayOutId);
-  const finalNightOut = nightOut || (MOCK_BUSINESSES.find((b) => b.id === businessId) || MOCK_BUSINESSES[0]).nightOutPackages?.find((n) => n.id === nightOutId);
-  const finalTourPackage = tourPackage || (MOCK_BUSINESSES.find((b) => b.id === businessId) || MOCK_BUSINESSES[0]).tourPackages?.find((t) => t.id === tourPackageId);
-  const finalGuide = guide || MOCK_GUIDES.find((g) => g.id === guideId);
-  const finalBusiness = business || MOCK_BUSINESSES.find((b) => b.id === businessId) || MOCK_BUSINESSES[0];
+  const providerName = guide?.name || business?.name || room?.hotelName || "Service Provider";
+  const providerCoverImage = guide?.coverImageUrl || guide?.avatarUrl || business?.coverImageUrl || room?.hotelCoverImage || (room?.imageUrls && room.imageUrls[0]) || "https://images.unsplash.com/photo-1566073771259-6a8506099945";
 
-  let itemTitle = finalRoom.displayName;
-  let itemPrice = finalRoom.pricePerNight * diffDays;
-  let pricingUnitLabel = `$${finalRoom.pricePerNight} x ${diffDays} Nights`;
+  let itemTitle = room?.displayName || (room?.roomType ? `${room.roomType.replace(/_/g, " ")} Room` : "Room Reservation");
+  let itemPrice = (room?.pricePerNight ?? 100) * diffDays;
+  let pricingUnitLabel = `$${room?.pricePerNight ?? 100} x ${diffDays} Nights`;
 
-  if (bookingType === "dayout" && finalDayOut) {
-    itemTitle = finalDayOut.title;
-    itemPrice = finalDayOut.price * 2; // 2 persons default
-    pricingUnitLabel = `$${finalDayOut.price} x 2 Persons (Day Pass ${finalDayOut.startTime}–${finalDayOut.endTime})`;
-  } else if (bookingType === "nightout" && finalNightOut) {
-    itemTitle = finalNightOut.title;
-    itemPrice = finalNightOut.price;
-    pricingUnitLabel = `$${finalNightOut.price} / Couple (Evening Dinner)`;
-  } else if (bookingType === "tour" && finalTourPackage) {
-    itemTitle = finalTourPackage.title;
-    itemPrice = finalTourPackage.price * 2;
-    pricingUnitLabel = `$${finalTourPackage.price} x 2 Travelers`;
-  } else if (bookingType === "tour" && finalGuide) {
-    itemTitle = `Private Guide Hire (${finalGuide.name})`;
-    itemPrice = (finalGuide.dailyRate || 120) * diffDays;
-    pricingUnitLabel = `$${finalGuide.dailyRate || 120} x ${diffDays} Days Hire`;
+  if (bookingType === "dayout" && dayOut) {
+    itemTitle = dayOut.title;
+    itemPrice = (dayOut.price ?? 35) * 2; // 2 persons default
+    pricingUnitLabel = `$${dayOut.price ?? 35} x 2 Persons (Day Pass ${dayOut.startTime ?? "09:00"}–${dayOut.endTime ?? "18:00"})`;
+  } else if (bookingType === "nightout" && nightOut) {
+    itemTitle = nightOut.title;
+    itemPrice = nightOut.price ?? 60;
+    pricingUnitLabel = `$${nightOut.price ?? 60} / Couple (Evening Dinner)`;
+  } else if (bookingType === "tour" && tourPackage) {
+    itemTitle = tourPackage.title;
+    itemPrice = (tourPackage.price ?? 80) * 2;
+    pricingUnitLabel = `$${tourPackage.price ?? 80} x 2 Travelers`;
+  } else if (bookingType === "tour" && guide) {
+    itemTitle = `Private Guide Hire (${guide.name})`;
+    itemPrice = (guide.dailyRate || 120) * diffDays;
+    pricingUnitLabel = `$${guide.dailyRate || 120} x ${diffDays} Days Hire`;
   }
 
   const taxFee = Number((itemPrice * 0.03).toFixed(2));
@@ -162,7 +156,7 @@ function CheckoutPageContent() {
     setSubmitting(true);
     try {
       const payload: any = {
-        businessId: finalGuide ? finalGuide.id : finalBusiness?.id,
+        businessId: guide ? guide.id : (business?.id || room?.hotelId),
         itemType: 
           bookingType === "room" ? "ROOM" :
           bookingType === "dayout" ? "DAY_OUT_PACKAGE" :
@@ -219,9 +213,9 @@ function CheckoutPageContent() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Back link */}
-      <Link href={finalGuide ? `/guide/${finalGuide.id}` : `/business/${finalBusiness.id}`} className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#006666] dark:text-[#3FCFC0] hover:underline">
+      <Link href={guide ? `/guide/${guide.id}` : business ? `/business/${business.id}` : "/"} className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#006666] dark:text-[#3FCFC0] hover:underline">
         <ArrowLeft className="w-4 h-4" />
-        <span>Back to {finalGuide ? finalGuide.name : finalBusiness.name}</span>
+        <span>Back to {providerName}</span>
       </Link>
 
       <div className="border-b border-[#E4E9EA] dark:border-[#20353D] pb-4">
@@ -322,7 +316,7 @@ function CheckoutPageContent() {
                       Pay Cash at Property / On Arrival
                     </h4>
                     <p className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
-                      Pay cash (USD/LKR) or card directly at {finalGuide ? finalGuide.name : finalBusiness.name}.
+                      Pay cash (USD/LKR) or card directly at {providerName}.
                     </p>
                   </div>
                 </div>
@@ -369,13 +363,13 @@ function CheckoutPageContent() {
 
             <div className="flex items-center gap-3">
               <img
-                src={finalGuide ? finalGuide.avatarUrl : finalBusiness.coverImageUrl}
-                alt={finalGuide ? finalGuide.name : finalBusiness.name}
+                src={providerCoverImage}
+                alt={providerName}
                 className="w-16 h-16 rounded-xl object-cover"
               />
               <div>
                 <h4 className="font-bold text-sm text-[#0E1B22] dark:text-[#EAF2F4]">
-                  {finalGuide ? finalGuide.name : finalBusiness.name}
+                  {providerName}
                 </h4>
                 <span className="text-[11px] text-[#008080] font-semibold block">{itemTitle}</span>
               </div>
@@ -428,7 +422,7 @@ function CheckoutPageContent() {
             </div>
 
             <div className="p-4 rounded-xl bg-gray-50 dark:bg-[#15323D] text-xs text-left space-y-1">
-              <p><strong className="text-[#0E1B22] dark:text-[#EAF2F4]">Provider:</strong> {finalGuide ? finalGuide.name : finalBusiness.name}</p>
+              <p><strong className="text-[#0E1B22] dark:text-[#EAF2F4]">Provider:</strong> {providerName}</p>
               <p><strong className="text-[#0E1B22] dark:text-[#EAF2F4]">Reserved:</strong> {itemTitle}</p>
               <p><strong className="text-[#0E1B22] dark:text-[#EAF2F4]">Guest:</strong> {fullName}</p>
               <p><strong className="text-[#0E1B22] dark:text-[#EAF2F4]">Payment:</strong> {paymentMethod === "CASH" ? "Pay upon arrival at property" : "Paid via Online Gateway"}</p>

@@ -72,11 +72,9 @@
             <artifactId>caffeine</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.cloudinary</groupId>
-            <artifactId>cloudinary-http5</artifactId>
-            <version>2.0.0</version>
-            <!-- explicit version — third-party SDK, not in the Spring BOM. Handles signed upload +
-                 delivery URL generation for hotel/tour photos (§ Cloudinary in the architecture diagram). -->
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.25.16</version>
         </dependency>
 	    <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -93,7 +91,9 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.13.0</version>
 				<configuration>
+					<release>21</release>
 					<parameters>true</parameters>
 				</configuration>
 			</plugin>

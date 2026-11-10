@@ -68,30 +68,79 @@ public class TourPackageService {
                 .collect(Collectors.toList());
     }
 
+    public List<TourPackageResponse> getTourPackagesByBusinessId(String businessId) {
+        Business b = businessRepository.findById(businessId).orElse(null);
+        String ownerId = b != null ? b.getOwnerId() : businessId;
+        return tourPackageRepository.findAll().stream()
+                .filter(t -> businessId.equals(t.getOwnerId()) || (ownerId != null && ownerId.equals(t.getOwnerId())))
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
     public TourPackageResponse getTourPackageById(String packageId) {
         TourPackage tour = tourPackageRepository.findById(packageId)
                 .orElseThrow(() -> new RuntimeException("Tour Package not found"));
         return mapToResponse(tour);
     }
 
-    private TourPackageResponse mapToResponse(TourPackage tour) {
+    public TourPackageResponse mapToResponse(TourPackage tour) {
         TourPackageResponse res = new TourPackageResponse();
         res.setId(tour.getId());
         res.setTitle(tour.getTitle());
         res.setDescription(tour.getDescription());
         res.setPrice(tour.getPrice());
+        res.setCurrency(tour.getCurrency() != null ? tour.getCurrency() : com.blueceylon.catalog_service.domain.model.enums.Currency.USD);
         res.setDurationDays(tour.getDurationDays());
+        res.setDurationLabel(tour.getDurationDays() != null ? (tour.getDurationDays() > 1 ? tour.getDurationDays() + " Days" : "Full Day (8 Hours)") : "1 Day");
         res.setCategory(tour.getCategory());
         res.setStartingCity(tour.getStartingCity());
+        res.setLocation(tour.getStartingCity() != null ? tour.getStartingCity().name() : "Sri Lanka");
         res.setMinGroupSize(tour.getMinGroupSize());
         res.setMaxGroupSize(tour.getMaxGroupSize());
         res.setImageUrls(tour.getImageUrls());
+        if (tour.getImageUrls() != null && !tour.getImageUrls().isEmpty()) {
+            res.setCoverImageUrl(tour.getImageUrls().get(0));
+        }
         res.setDifficultyLevel(tour.getDifficultyLevel());
         res.setPhysicalRequirements(tour.getPhysicalRequirements());
         res.setTransportModeIncluded(tour.getTransportModeIncluded());
         res.setMealsIncluded(tour.getMealsIncluded());
         res.setAccommodationIncluded(tour.getAccommodationIncluded());
         res.setIsPrivateTour(tour.getIsPrivateTour());
+        res.setProviderId(tour.getOwnerId());
+        res.setProviderType(tour.getOwnerType());
+
+        // Resolve Provider Name & Verification
+        if (tour.getOwnerId() != null) {
+            if (guideRepository.existsByUserId(tour.getOwnerId())) {
+                guideRepository.findByUserId(tour.getOwnerId()).ifPresent(g -> {
+                    res.setProviderName(g.getName());
+                    res.setSltdaVerified(g.getStatus() == com.blueceylon.catalog_service.domain.model.enums.ApprovalStatus.APPROVED);
+                    if (res.getCoverImageUrl() == null) res.setCoverImageUrl(g.getCoverImageUrl());
+                });
+            } else if (businessRepository.existsByOwnerId(tour.getOwnerId())) {
+                businessRepository.findByOwnerId(tour.getOwnerId()).ifPresent(b -> {
+                    res.setProviderName(b.getName());
+                    res.setSltdaVerified(b.getVerificationStatus() == com.blueceylon.catalog_service.domain.model.enums.VerificationStatus.VERIFIED);
+                    if (res.getCoverImageUrl() == null) res.setCoverImageUrl(b.getCoverImageUrl());
+                });
+            } else if (businessRepository.existsById(tour.getOwnerId())) {
+                businessRepository.findById(tour.getOwnerId()).ifPresent(b -> {
+                    res.setProviderName(b.getName());
+                    res.setSltdaVerified(b.getVerificationStatus() == com.blueceylon.catalog_service.domain.model.enums.VerificationStatus.VERIFIED);
+                    if (res.getCoverImageUrl() == null) res.setCoverImageUrl(b.getCoverImageUrl());
+                });
+            }
+        }
+        if (res.getProviderName() == null) {
+            res.setProviderName(tour.getOwnerType() == OwnerType.TOUR_GUIDE ? "Private Tour Guide" : (tour.getOwnerType() == OwnerType.HOTEL ? "Verified Hotel Partner" : "Certified Tour Agency"));
+        }
+        if (res.getSltdaVerified() == null) {
+            res.setSltdaVerified(false);
+        }
+        if (res.getCoverImageUrl() == null) {
+            res.setCoverImageUrl("https://images.unsplash.com/photo-1546708973-b339540b5162");
+        }
         return res;
     }
 

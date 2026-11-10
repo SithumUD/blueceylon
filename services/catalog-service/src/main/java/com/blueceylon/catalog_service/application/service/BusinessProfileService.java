@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import com.blueceylon.catalog_service.infrastructure.cloudinary.CloudinaryService;
+import com.blueceylon.catalog_service.infrastructure.storage.R2StorageService;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -24,18 +24,18 @@ public class BusinessProfileService {
     private final BusinessRepository businessRepository;
     private final NotificationPublisherService notificationPublisherService;
     private final TourGuideProfileRepository guideRepository;
-    private final CloudinaryService cloudinaryService;
+    private final R2StorageService r2StorageService;
 
     public BusinessProfileService(
             BusinessRepository businessRepository,
             TourGuideProfileRepository guideRepository,
             NotificationPublisherService notificationPublisherService,
-            CloudinaryService cloudinaryService
+            R2StorageService r2StorageService
     ) {
         this.notificationPublisherService = notificationPublisherService;
         this.businessRepository = businessRepository;
         this.guideRepository = guideRepository;
-        this.cloudinaryService = cloudinaryService;
+        this.r2StorageService = r2StorageService;
     }
 
     public Object getMyProfile(String ownerId) {
@@ -235,9 +235,9 @@ public class BusinessProfileService {
         
         if (StringUtils.hasText(request.getCoverImageUrl())) {
             String coverUrl = request.getCoverImageUrl();
-            if (coverUrl.startsWith("data:") && cloudinaryService != null) {
+            if (coverUrl.startsWith("data:") && r2StorageService != null) {
                 try {
-                    coverUrl = cloudinaryService.uploadBase64(coverUrl, "covers");
+                    coverUrl = r2StorageService.uploadBase64(coverUrl, "covers");
                 } catch (Exception e) {
                     // Fallback to raw string
                 }
@@ -247,9 +247,9 @@ public class BusinessProfileService {
 
         if (StringUtils.hasText(request.getVideoUrl())) {
             String videoUrl = request.getVideoUrl();
-            if (videoUrl.startsWith("data:") && cloudinaryService != null) {
+            if (videoUrl.startsWith("data:") && r2StorageService != null) {
                 try {
-                    videoUrl = cloudinaryService.uploadBase64(videoUrl, "videos");
+                    videoUrl = r2StorageService.uploadBase64(videoUrl, "videos");
                 } catch (Exception e) {
                     // Fallback to raw string
                 }

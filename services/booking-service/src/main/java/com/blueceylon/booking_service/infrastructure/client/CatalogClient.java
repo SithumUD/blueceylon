@@ -27,7 +27,7 @@ public class CatalogClient {
 
     // A real implementation would have @CircuitBreaker(name="catalogService") and @Retry(name="catalogService")
     // Due to MVP POM missing full Resilience4j setup, we just use @Cacheable for basic degradation fallback
-    @Cacheable(value = "catalogItems", key = "#type.name() + '-' + #itemId", unless = "#result == null")
+    @Cacheable(value = "catalogItems", key = "{#type, #itemId}", unless = "#result == null")
     public CatalogItemDto getItem(ItemType type, String itemId) {
         String path = "";
         switch (type) {

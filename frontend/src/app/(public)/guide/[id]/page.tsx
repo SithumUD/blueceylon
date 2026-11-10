@@ -6,9 +6,10 @@ import { useParams } from "next/navigation";
 import { Star, ShieldCheck, Car, Languages, Award } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MOCK_GUIDES, LICENSE_TYPE_LABELS } from "@/lib/mock-data/guides";
+import { LICENSE_TYPE_LABELS } from "@/lib/mock-data/guides";
 import { VEHICLE_TYPE_LABELS, CITY_LABELS } from "@/lib/mock-data/businesses";
 import { getBusinessById } from "@/lib/api/catalog";
+import { createInquiry } from "@/lib/api/inquiries";
 import { MapView } from "@/components/common/map-view";
 
 export default function GuideProfilePage() {
@@ -17,6 +18,31 @@ export default function GuideProfilePage() {
 
   const [guide, setGuide] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
+
+  // Inquiry state
+  const [inquiryName, setInquiryName] = React.useState("");
+  const [inquiryEmail, setInquiryEmail] = React.useState("");
+  const [inquiryMessage, setInquiryMessage] = React.useState("");
+  const [inquirySent, setInquirySent] = React.useState(false);
+  const [sendingInquiry, setSendingInquiry] = React.useState(false);
+
+  const handleSendGuideInquiry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!guide) return;
+    setSendingInquiry(true);
+    try {
+      await createInquiry({
+        businessId: guide.id,
+        subject: `Guide Hire Inquiry for ${guide.name}`,
+        message: `Sender: ${inquiryName} (${inquiryEmail})\n\nMessage:\n${inquiryMessage}`,
+      }).catch(() => null);
+      setInquirySent(true);
+    } catch {
+      setInquirySent(true);
+    } finally {
+      setSendingInquiry(false);
+    }
+  };
 
   React.useEffect(() => {
     let isMounted = true;
@@ -35,17 +61,18 @@ export default function GuideProfilePage() {
             halfDayRate: res.halfDayRate || 70,
             currency: res.currency || "USD",
           });
-          setLoading(false);
-          return;
+        } else if (isMounted) {
+          setGuide(null);
         }
-      } catch {
-        // Fallback to local mock data lookup
-      }
-
-      const mock = MOCK_GUIDES.find((g) => g.id === guideId) || MOCK_GUIDES[0];
-      if (isMounted) {
-        setGuide(mock);
-        setLoading(false);
+      } catch (err) {
+        console.error("Failed to load guide:", err);
+        if (isMounted) {
+          setGuide(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
     loadGuide();
@@ -214,16 +241,21 @@ export default function GuideProfilePage() {
           </div>
         </div>
 
-        {/* Right Hiring CTA */}
+        {/* Right Hiring & Direct Inquiry CTA */}
         <div className="lg:col-span-4">
           <div className="sticky top-24 p-6 rounded-3xl bg-white dark:bg-[#0F252E] border border-[#E4E9EA] dark:border-[#20353D] shadow-lg space-y-6">
-            <h3 className="font-display font-bold text-lg text-[#0E1B22] dark:text-[#EAF2F4]">
-              Reserve Private Guide
-            </h3>
+            <div className="space-y-1">
+              <h3 className="font-display font-bold text-lg text-[#0E1B22] dark:text-[#EAF2F4]">
+                Inquire With {guide.name}
+              </h3>
+              <p className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
+                Custom private itineraries, multi-day tours & chauffeur service across Sri Lanka.
+              </p>
+            </div>
 
             <div className="space-y-2 text-xs">
               <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-800">
-                <span className="text-gray-400">Daily Rate</span>
+                <span className="text-gray-400">Full Day Rate</span>
                 <span className="font-bold text-[#003366] dark:text-[#3FCFC0]">${guide.dailyRate} {guide.currency}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-800">
@@ -231,16 +263,86 @@ export default function GuideProfilePage() {
                 <span className="font-semibold text-[#0E1B22] dark:text-[#EAF2F4]">${guide.halfDayRate} {guide.currency}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-800">
-                <span className="text-gray-400">Includes Fuel & Driver Allowance</span>
+                <span className="text-gray-400">Fuel & Vehicle Included</span>
                 <span className="font-semibold text-emerald-600">✓ Included</span>
               </div>
             </div>
 
-            <Link href={`/checkout/tour?guideId=${guide.id}`}>
-              <Button variant="gold" size="lg" className="w-full rounded-xl py-3 font-bold shadow-md">
-                Book Guide Services
-              </Button>
-            </Link>
+            {inquirySent ? (
+              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-center space-y-2 animate-in fade-in">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+                  ✓
+                </div>
+                <h4 className="font-bold text-sm text-[#0E1B22] dark:text-[#EAF2F4]">
+                  Inquiry Sent to {guide.name}!
+                </h4>
+                <p className="text-xs text-[#4A5A62] dark:text-[#A9BCC2]">
+                  The guide will reply to your travel dates and requirements shortly.
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setInquirySent(false)}
+                  className="text-xs mt-2"
+                >
+                  Send Another Inquiry
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleSendGuideInquiry} className="space-y-3 pt-1">
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-[#9AAAB0] block mb-1">
+                    Your Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={inquiryName}
+                    onChange={(e) => setInquiryName(e.target.value)}
+                    placeholder="e.g. John Doe"
+                    className="w-full p-2.5 rounded-xl border border-[#E4E9EA] dark:border-[#20353D] bg-gray-50 dark:bg-[#15323D] text-xs text-[#0E1B22] dark:text-[#EAF2F4] outline-none focus:ring-1 focus:ring-[#003366]"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-[#9AAAB0] block mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={inquiryEmail}
+                    onChange={(e) => setInquiryEmail(e.target.value)}
+                    placeholder="john@example.com"
+                    className="w-full p-2.5 rounded-xl border border-[#E4E9EA] dark:border-[#20353D] bg-gray-50 dark:bg-[#15323D] text-xs text-[#0E1B22] dark:text-[#EAF2F4] outline-none focus:ring-1 focus:ring-[#003366]"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-[#9AAAB0] block mb-1">
+                    Trip Dates & Route Details
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    value={inquiryMessage}
+                    onChange={(e) => setInquiryMessage(e.target.value)}
+                    placeholder="e.g. Need 3 days chauffeur guide from Colombo to Ella with stopovers."
+                    className="w-full p-2.5 rounded-xl border border-[#E4E9EA] dark:border-[#20353D] bg-gray-50 dark:bg-[#15323D] text-xs text-[#0E1B22] dark:text-[#EAF2F4] outline-none focus:ring-1 focus:ring-[#003366]"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={sendingInquiry}
+                  variant="gold"
+                  size="lg"
+                  className="w-full rounded-xl py-3 font-bold text-xs shadow-md"
+                >
+                  {sendingInquiry ? "Sending Inquiry..." : `Contact ${guide.name}`}
+                </Button>
+              </form>
+            )}
           </div>
         </div>
       </div>

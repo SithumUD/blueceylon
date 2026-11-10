@@ -484,7 +484,7 @@ Authorization: Bearer <business-owner-token>
   "addressLine": "123 Lake Road, Kandy",
   "latitude": 7.2906,
   "longitude": 80.6337,
-  "coverImageUrl": "https://res.cloudinary.com/example/image/upload/v1/cover.jpg",
+  "coverImageUrl": "https://media.blueceylon.lk/blueceylon/covers/sample.jpg",
   "galleryImageUrls": ["https://example.com/img1.jpg"],
   "starRating": 4,
   "totalBranches": 1,

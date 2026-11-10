@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
 import { getBusinessBookings, updateBookingStatus } from "@/lib/api/booking";
 import { updateMyAccount } from "@/lib/api/auth";
-import { DashboardBooking, BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, PAYMENT_METHOD_LABELS, MOCK_DASHBOARD_BOOKINGS } from "@/lib/mock-data/bookings";
+import { DashboardBooking, BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/mock-data/bookings";
 
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
@@ -30,12 +30,15 @@ export default function DashboardPage() {
     }
     setLoading(true);
     try {
-      const businessId = user?.id || "b-1";
-      const res = await getBusinessBookings(businessId);
-      setBookings(res);
+      const businessId = user?.id || "";
+      if (businessId) {
+        const res = await getBusinessBookings(businessId);
+        setBookings(res || []);
+      } else {
+        setBookings([]);
+      }
     } catch {
-      // Fallback to mock bookings
-      setBookings(MOCK_DASHBOARD_BOOKINGS);
+      setBookings([]);
     } finally {
       setLoading(false);
     }

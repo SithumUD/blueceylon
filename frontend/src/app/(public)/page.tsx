@@ -12,7 +12,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { MOCK_BUSINESSES, CITY_LABELS, REGION_LABELS } from "@/lib/mock-data/businesses";
+import { CITY_LABELS, REGION_LABELS, Business, TourPackage } from "@/lib/mock-data/businesses";
+import { searchBusinesses, searchTours } from "@/lib/api/catalog";
 
 export default function ExploreLandingPage() {
   const router = useRouter();
@@ -211,20 +212,34 @@ export default function ExploreLandingPage() {
     },
   ];
 
-  // Featured Hotels subset
-  const FEATURED_HOTELS = MOCK_BUSINESSES.slice(0, 3);
+  const [featuredHotels, setFeaturedHotels] = useState<Business[]>([]);
+  const [featuredTours, setFeaturedTours] = useState<any[]>([]);
 
-  // Featured Tour Packages subset
-  const FEATURED_TOURS = MOCK_BUSINESSES.flatMap((b) =>
-    (b.tourPackages || []).map((tp) => ({
-      ...tp,
-      hotelName: b.name,
-      hotelId: b.id,
-      city: b.city,
-      rating: b.averageRating,
-      sltdaVerified: b.verificationStatus === "VERIFIED",
-    }))
-  ).slice(0, 3);
+  React.useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        const hotelRes = await searchBusinesses({ type: "HOTEL", size: 3 });
+        if (hotelRes && hotelRes.content && isMounted) {
+          setFeaturedHotels(hotelRes.content);
+        }
+      } catch {
+        // ignore
+      }
+      try {
+        const tourRes = await searchTours({ size: 3 });
+        if (tourRes && tourRes.content && isMounted) {
+          setFeaturedTours(tourRes.content);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#F4F6F8] dark:bg-[#081419] transition-colors">
@@ -643,7 +658,7 @@ export default function ExploreLandingPage() {
 
           {/* Hotel Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {FEATURED_HOTELS.map((hotel) => (
+            {featuredHotels.map((hotel) => (
               <div
                 key={hotel.id}
                 className="rounded-3xl bg-[#F4F6F8] dark:bg-[#081419] border border-[#E4E9EA] dark:border-[#20353D] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col justify-between"
@@ -652,7 +667,7 @@ export default function ExploreLandingPage() {
                   {/* Image container */}
                   <div className="relative h-56 overflow-hidden">
                     <img
-                      src={hotel.coverImageUrl}
+                      src={hotel.coverImageUrl || "https://images.unsplash.com/photo-1566073771259-6a8506099945"}
                       alt={hotel.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
@@ -661,8 +676,8 @@ export default function ExploreLandingPage() {
                     </div>
                     <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold flex items-center gap-1">
                       <Star className="w-3.5 h-3.5 text-[#FDA301] fill-[#FDA301]" />
-                      <span>{hotel.averageRating}</span>
-                      <span className="text-gray-300 font-normal">({hotel.reviewCount})</span>
+                      <span>{hotel.averageRating || "4.8"}</span>
+                      <span className="text-gray-300 font-normal">({hotel.reviewCount || 0})</span>
                     </div>
                   </div>
 
@@ -685,7 +700,7 @@ export default function ExploreLandingPage() {
                 <div className="p-6 pt-0 flex items-center justify-between border-t border-[#E4E9EA] dark:border-[#20353D]/50 mt-4 pt-4">
                   <div>
                     <span className="text-[10px] uppercase font-bold text-[#4A5A62] dark:text-[#A9BCC2] block">From</span>
-                    <span className="text-xl font-extrabold text-[#003366] dark:text-[#3FCFC0]">${hotel.priceStartFrom}</span>
+                    <span className="text-xl font-extrabold text-[#003366] dark:text-[#3FCFC0]">${hotel.priceStartFrom || 50}</span>
                     <span className="text-xs text-gray-500"> / night</span>
                   </div>
                   <Link href={`/rooms?city=${encodeURIComponent(hotel.city)}`}>
@@ -739,7 +754,7 @@ export default function ExploreLandingPage() {
 
         {/* Tour Package Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {FEATURED_TOURS.map((tour) => (
+          {featuredTours.map((tour) => (
             <div
               key={tour.id}
               className="rounded-3xl bg-white dark:bg-[#0F252E] border border-[#E4E9EA] dark:border-[#20353D] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col justify-between"
@@ -748,14 +763,14 @@ export default function ExploreLandingPage() {
                 {/* Image */}
                 <div className="relative h-56 overflow-hidden">
                   <img
-                    src={tour.imageUrls[0]}
+                    src={tour.imageUrls?.[0] || tour.coverImageUrl || "https://images.unsplash.com/photo-1546708973-b339540b5162"}
                     alt={tour.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute top-4 left-4 z-10">
                     <span className="px-3 py-1 rounded-full bg-[#001F3D]/80 backdrop-blur-md text-white text-[11px] font-bold uppercase tracking-wider flex items-center gap-1">
                       <Clock className="w-3 h-3 text-[#5CE1E6]" />
-                      {tour.durationLabel}
+                      {tour.durationLabel || "Full Day"}
                     </span>
                   </div>
                   <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold flex items-center gap-1">
@@ -767,7 +782,7 @@ export default function ExploreLandingPage() {
                 {/* Tour Info */}
                 <div className="p-6 space-y-3">
                   <span className="text-[10px] uppercase font-bold text-[#008080] dark:text-[#3FCFC0] block">
-                    By {tour.hotelName}
+                    By {tour.hotelName || tour.providerName || "Verified Provider"}
                   </span>
                   <h3 className="font-display text-xl font-bold text-[#0E1B22] dark:text-[#EAF2F4] group-hover:text-[#008080] transition-colors">
                     {tour.title}
@@ -778,9 +793,9 @@ export default function ExploreLandingPage() {
 
                   {/* Highlights/Inclusions pills */}
                   <div className="flex flex-wrap gap-1.5 pt-2">
-                    {tour.inclusions.slice(0, 2).map((inc) => (
-                      <span key={inc.id} className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-[#15323D] text-[#4A5A62] dark:text-[#A9BCC2]">
-                        {inc.name}
+                    {(tour.inclusions || []).slice(0, 2).map((inc: any, idx: number) => (
+                      <span key={inc.id || idx} className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-[#15323D] text-[#4A5A62] dark:text-[#A9BCC2]">
+                        {inc.name || inc}
                       </span>
                     ))}
                   </div>
@@ -791,10 +806,10 @@ export default function ExploreLandingPage() {
               <div className="p-6 pt-0 flex items-center justify-between border-t border-[#E4E9EA] dark:border-[#20353D]/50 mt-4 pt-4">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-[#4A5A62] dark:text-[#A9BCC2] block">Package Price</span>
-                  <span className="text-xl font-extrabold text-[#008080] dark:text-[#3FCFC0]">${tour.price}</span>
-                  <span className="text-xs text-gray-500"> {tour.currency} / person</span>
+                  <span className="text-xl font-extrabold text-[#008080] dark:text-[#3FCFC0]">${tour.price || 100}</span>
+                  <span className="text-xs text-gray-500"> {tour.currency || "USD"} / person</span>
                 </div>
-                <Link href="/tours">
+                <Link href={`/tours/${tour.id}`}>
                   <Button variant="secondary" size="sm" className="rounded-xl font-bold gap-1">
                     <span>View Package</span>
                     <ArrowRight className="w-3.5 h-3.5" />

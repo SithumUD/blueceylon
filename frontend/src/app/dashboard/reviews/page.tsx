@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Star, MessageSquare, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MOCK_REVIEWS, type Review } from "@/lib/mock-data/reviews";
+import { type Review } from "@/lib/mock-data/reviews";
 import { format } from "date-fns";
 import { useAuthStore } from "@/store/auth-store";
 import { getReviews, respondToReview } from "@/lib/api/reviews";
@@ -17,11 +17,15 @@ export default function DashboardReviewsPage() {
   const loadReviews = async () => {
     setLoading(true);
     try {
-      const entityId = user?.id || "b-1";
-      const res = await getReviews({ entityId, entityType: "HOTEL" });
-      setReviewsList(res.content);
+      const entityId = user?.id || "";
+      if (entityId) {
+        const res = await getReviews({ entityId, entityType: "HOTEL" });
+        setReviewsList(res.content || []);
+      } else {
+        setReviewsList([]);
+      }
     } catch {
-      setReviewsList(MOCK_REVIEWS);
+      setReviewsList([]);
     } finally {
       setLoading(false);
     }

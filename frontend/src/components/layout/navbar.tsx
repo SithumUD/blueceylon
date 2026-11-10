@@ -81,24 +81,18 @@ export function Navbar() {
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden xl:flex items-center gap-5 text-sm font-semibold text-[#4A5A62] dark:text-[#A9BCC2]">
+        <nav className="hidden lg:flex items-center gap-6 text-sm font-semibold text-[#4A5A62] dark:text-[#A9BCC2]">
           <Link href="/" className="hover:text-[#003366] dark:hover:text-[#3FCFC0] transition-colors">
             Explore
           </Link>
           <Link href="/rooms" className="hover:text-[#003366] dark:hover:text-[#3FCFC0] transition-colors">
-            Rooms
+            Stays
           </Link>
           <Link href="/tours" className="hover:text-[#003366] dark:hover:text-[#3FCFC0] transition-colors">
             Tours
           </Link>
-          <Link href="/hotels" className="hover:text-[#003366] dark:hover:text-[#3FCFC0] transition-colors">
-            Hotels
-          </Link>
-          <Link href="/tour-agencies" className="hover:text-[#003366] dark:hover:text-[#3FCFC0] transition-colors">
-            Tour Agencies
-          </Link>
           <Link href="/tour-guides" className="hover:text-[#003366] dark:hover:text-[#3FCFC0] transition-colors">
-            Tour Guides
+            Guides
           </Link>
           <Link href="/extra-packages" className="hover:text-[#003366] dark:hover:text-[#3FCFC0] transition-colors flex items-center gap-1 text-[#FDA301]">
             <Sparkles className="w-3.5 h-3.5" />
@@ -117,66 +111,68 @@ export function Navbar() {
             {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4 text-[#FDA301]" />}
           </button>
 
-          {/* Register Property Dropdown Button */}
-          <div className="relative" ref={dropdownRef}>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setRegisterDropdownOpen(!registerDropdownOpen)}
-              className="gap-1.5 shadow-sm font-bold"
-            >
-              <UserCheck className="w-4 h-4" />
-              <span>Register Property</span>
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${registerDropdownOpen ? "rotate-180" : ""}`} />
-            </Button>
+          {/* Register Property Dropdown Button (Only for logged in users) */}
+          {isLoggedIn && (
+            <div className="relative" ref={dropdownRef}>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setRegisterDropdownOpen(!registerDropdownOpen)}
+                className="gap-1.5 shadow-sm font-bold"
+              >
+                <UserCheck className="w-4 h-4" />
+                <span>Register Property</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${registerDropdownOpen ? "rotate-180" : ""}`} />
+              </Button>
 
-            {registerDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-60 rounded-2xl bg-white dark:bg-[#0F252E] border border-[#E4E9EA] dark:border-[#20353D] shadow-xl p-2 space-y-1 z-50 animate-in fade-in zoom-in-95">
-                <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-[#4A5A62] dark:text-[#A9BCC2] tracking-wider">
-                  Choose Business Profile
+              {registerDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-60 rounded-2xl bg-white dark:bg-[#0F252E] border border-[#E4E9EA] dark:border-[#20353D] shadow-xl p-2 space-y-1 z-50 animate-in fade-in zoom-in-95">
+                  <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-[#4A5A62] dark:text-[#A9BCC2] tracking-wider">
+                    Choose Business Profile
+                  </div>
+                  <Link
+                    href="/register/hotel"
+                    onClick={() => setRegisterDropdownOpen(false)}
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-xs font-semibold text-[#0E1B22] dark:text-[#EAF2F4]"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-[#003366]/10 text-[#003366] dark:text-[#3FCFC0] flex items-center justify-center shrink-0">
+                      <Hotel className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold">Hotel / Accommodation</div>
+                      <div className="text-[10px] text-[#4A5A62] dark:text-[#A9BCC2] font-normal">Hotels, Villas, Homestays</div>
+                    </div>
+                  </Link>
+                  <Link
+                    href="/register/tour-agency"
+                    onClick={() => setRegisterDropdownOpen(false)}
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-xs font-semibold text-[#0E1B22] dark:text-[#EAF2F4]"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-[#008080]/10 text-[#008080] dark:text-[#3FCFC0] flex items-center justify-center shrink-0">
+                      <Briefcase className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold">Tour Agency</div>
+                      <div className="text-[10px] text-[#4A5A62] dark:text-[#A9BCC2] font-normal">Registered Travel Operators</div>
+                    </div>
+                  </Link>
+                  <Link
+                    href="/register/tour-guide"
+                    onClick={() => setRegisterDropdownOpen(false)}
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-xs font-semibold text-[#0E1B22] dark:text-[#EAF2F4]"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-[#FDA301]/10 text-[#FDA301] flex items-center justify-center shrink-0">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold">Tour Guide</div>
+                      <div className="text-[10px] text-[#4A5A62] dark:text-[#A9BCC2] font-normal">Independent Licensed Guides</div>
+                    </div>
+                  </Link>
                 </div>
-                <Link
-                  href="/register/hotel"
-                  onClick={() => setRegisterDropdownOpen(false)}
-                  className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-xs font-semibold text-[#0E1B22] dark:text-[#EAF2F4]"
-                >
-                  <div className="w-7 h-7 rounded-lg bg-[#003366]/10 text-[#003366] dark:text-[#3FCFC0] flex items-center justify-center shrink-0">
-                    <Hotel className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="font-bold">Hotel / Accommodation</div>
-                    <div className="text-[10px] text-[#4A5A62] dark:text-[#A9BCC2] font-normal">Hotels, Villas, Homestays</div>
-                  </div>
-                </Link>
-                <Link
-                  href="/register/tour-agency"
-                  onClick={() => setRegisterDropdownOpen(false)}
-                  className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-xs font-semibold text-[#0E1B22] dark:text-[#EAF2F4]"
-                >
-                  <div className="w-7 h-7 rounded-lg bg-[#008080]/10 text-[#008080] dark:text-[#3FCFC0] flex items-center justify-center shrink-0">
-                    <Briefcase className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="font-bold">Tour Agency</div>
-                    <div className="text-[10px] text-[#4A5A62] dark:text-[#A9BCC2] font-normal">Registered Travel Operators</div>
-                  </div>
-                </Link>
-                <Link
-                  href="/register/tour-guide"
-                  onClick={() => setRegisterDropdownOpen(false)}
-                  className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-xs font-semibold text-[#0E1B22] dark:text-[#EAF2F4]"
-                >
-                  <div className="w-7 h-7 rounded-lg bg-[#FDA301]/10 text-[#FDA301] flex items-center justify-center shrink-0">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="font-bold">Tour Guide</div>
-                    <div className="text-[10px] text-[#4A5A62] dark:text-[#A9BCC2] font-normal">Independent Licensed Guides</div>
-                  </div>
-                </Link>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* ── Profile / Auth Dropdown ── */}
           <div className="relative" ref={profileDropdownRef}>
@@ -361,22 +357,17 @@ export function Navbar() {
               Explore
             </Link>
             <Link href="/rooms" onClick={() => setMobileMenuOpen(false)} className="py-2 text-sm font-semibold text-[#0E1B22] dark:text-[#EAF2F4]">
-              Rooms
+              Stays
             </Link>
             <Link href="/tours" onClick={() => setMobileMenuOpen(false)} className="py-2 text-sm font-semibold text-[#0E1B22] dark:text-[#EAF2F4]">
               Tours
             </Link>
-            <Link href="/hotels" onClick={() => setMobileMenuOpen(false)} className="py-2 text-sm font-semibold text-[#0E1B22] dark:text-[#EAF2F4]">
-              Hotels
-            </Link>
-            <Link href="/tour-agencies" onClick={() => setMobileMenuOpen(false)} className="py-2 text-sm font-semibold text-[#0E1B22] dark:text-[#EAF2F4]">
-              Tour Agencies
-            </Link>
             <Link href="/tour-guides" onClick={() => setMobileMenuOpen(false)} className="py-2 text-sm font-semibold text-[#0E1B22] dark:text-[#EAF2F4]">
-              Tour Guides
+              Guides
             </Link>
-            <Link href="/extra-packages" onClick={() => setMobileMenuOpen(false)} className="py-2 text-sm font-bold text-[#FDA301]">
-              Extra Packages
+            <Link href="/extra-packages" onClick={() => setMobileMenuOpen(false)} className="col-span-2 py-2 text-sm font-bold text-[#FDA301] flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4" />
+              <span>Extra Packages</span>
             </Link>
           </div>
 
@@ -438,18 +429,22 @@ export function Navbar() {
             )}
 
 
-            <div className="pt-2 text-[10px] uppercase font-bold text-gray-400">Register Business Profile</div>
-            <div className="grid grid-cols-3 gap-1">
-              <Link href="/register/hotel" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-xl bg-gray-100 dark:bg-[#15323D] text-[11px] text-center font-semibold">
-                Hotel
-              </Link>
-              <Link href="/register/tour-agency" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-xl bg-gray-100 dark:bg-[#15323D] text-[11px] text-center font-semibold">
-                Agency
-              </Link>
-              <Link href="/register/tour-guide" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-xl bg-gray-100 dark:bg-[#15323D] text-[11px] text-center font-semibold">
-                Guide
-              </Link>
-            </div>
+            {isLoggedIn && (
+              <>
+                <div className="pt-2 text-[10px] uppercase font-bold text-gray-400">Register Business Profile</div>
+                <div className="grid grid-cols-3 gap-1">
+                  <Link href="/register/hotel" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-xl bg-gray-100 dark:bg-[#15323D] text-[11px] text-center font-semibold">
+                    Hotel
+                  </Link>
+                  <Link href="/register/tour-agency" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-xl bg-gray-100 dark:bg-[#15323D] text-[11px] text-center font-semibold">
+                    Agency
+                  </Link>
+                  <Link href="/register/tour-guide" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-xl bg-gray-100 dark:bg-[#15323D] text-[11px] text-center font-semibold">
+                    Guide
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

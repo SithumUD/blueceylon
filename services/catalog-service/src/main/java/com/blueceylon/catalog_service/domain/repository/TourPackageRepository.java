@@ -12,7 +12,8 @@ public interface TourPackageRepository extends JpaRepository<TourPackage, String
            "(:city IS NULL OR t.startingCity = :city) AND " +
            "(:category IS NULL OR t.category = :category) AND " +
            "(:ownerType IS NULL OR t.ownerType = :ownerType) AND " +
-           "t.price BETWEEN :minPrice AND :maxPrice")
+           "(:minPrice IS NULL OR t.price >= :minPrice) AND " +
+           "(:maxPrice IS NULL OR t.price <= :maxPrice)")
     org.springframework.data.domain.Page<TourPackage> searchTours(
             @org.springframework.data.repository.query.Param("city") com.blueceylon.catalog_service.domain.model.enums.SriLankanCity city,
             @org.springframework.data.repository.query.Param("category") com.blueceylon.catalog_service.domain.model.enums.TourCategory category,

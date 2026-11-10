@@ -27,6 +27,18 @@ public class RoomService {
                 .orElseThrow(() -> new RuntimeException("Room not found"));
     }
 
+    public RoomResponse getRoomResponseById(String roomId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Room not found"));
+        return mapToResponse(room);
+    }
+
+    public List<RoomResponse> getRoomsByHotelId(String hotelId) {
+        return roomRepository.findByHotelId(hotelId).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
     public RoomResponse createRoom(String ownerId, RoomRequest request) {
         Business business = businessRepository.findByOwnerId(ownerId)
                 .orElseThrow(() -> new RuntimeException("No business profile found for this user"));
@@ -37,8 +49,9 @@ public class RoomService {
 
         Room room = new Room();
         room.setHotel((Hotel) business);
-        room.setCity(business.getCity());
+        room.setCity(request.getCity() != null ? request.getCity() : business.getCity());
         room.setRoomNumber(request.getRoomNumber());
+        room.setDisplayName(request.getDisplayName());
         room.setRoomType(request.getRoomType());
         room.setPricePerNight(request.getPricePerNight());
         room.setCurrency(request.getCurrency());
@@ -66,11 +79,15 @@ public class RoomService {
                 .collect(Collectors.toList());
     }
 
-    private RoomResponse mapToResponse(Room room) {
+    public RoomResponse mapToResponse(Room room) {
         RoomResponse response = new RoomResponse();
         response.setId(room.getId());
         response.setRoomNumber(room.getRoomNumber());
+        response.setDisplayName(room.getDisplayName() != null && !room.getDisplayName().trim().isEmpty() 
+                ? room.getDisplayName() 
+                : (room.getRoomType() != null ? room.getRoomType().name().replace("_", " ") + " Room" : ("Room " + room.getRoomNumber())));
         response.setRoomType(room.getRoomType());
+        response.setCity(room.getCity());
         response.setPricePerNight(room.getPricePerNight());
         response.setCurrency(room.getCurrency());
         response.setCapacity(room.getCapacity());
@@ -82,6 +99,19 @@ public class RoomService {
         response.setBedConfiguration(room.getBedConfiguration());
         response.setSmokingAllowed(room.getSmokingAllowed());
         response.setIsHourlyBookable(room.getIsHourlyBookable());
+
+        if (room.getHotel() != null) {
+            response.setHotelId(room.getHotel().getId());
+            response.setHotelName(room.getHotel().getName());
+            response.setHotelCoverImage(room.getHotel().getCoverImageUrl());
+            response.setHotelRating(room.getHotel().getAverageRating() != null ? room.getHotel().getAverageRating() : 5.0);
+            if (room.getHotel().getCity() != null) {
+                response.setHotelCity(room.getHotel().getCity().name());
+            }
+            response.setHotelAddress(room.getHotel().getAddressLine());
+            response.setSltdaVerified(room.getHotel().getVerificationStatus() == com.blueceylon.catalog_service.domain.model.enums.VerificationStatus.VERIFIED);
+        }
+
         return response;
     }
 
@@ -96,7 +126,13 @@ public class RoomService {
         }
 
         room.setRoomNumber(request.getRoomNumber());
+        if (request.getDisplayName() != null) {
+            room.setDisplayName(request.getDisplayName());
+        }
         room.setRoomType(request.getRoomType());
+        if (request.getCity() != null) {
+            room.setCity(request.getCity());
+        }
         room.setPricePerNight(request.getPricePerNight());
         room.setCurrency(request.getCurrency());
         room.setCapacity(request.getCapacity());
